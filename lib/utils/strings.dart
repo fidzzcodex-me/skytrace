@@ -189,6 +189,15 @@ const Map<String, List<String>> _table = {
   'edit_status': ['Status', 'Status'],
   'edit_url': ['URL', 'URL'],
   'tunnel_note': ['Koneksi ini diteruskan tanpa dekripsi (tunnel).', 'This connection was tunneled without decryption.'],
+  'target_title': ['Aplikasi target', 'Target apps'],
+  'target_all': ['Semua aplikasi', 'All apps'],
+  'target_count': ['aplikasi dipilih', 'apps selected'],
+  'target_hint': ['Cari nama aplikasi atau package', 'Search app name or package'],
+  'target_system': ['Tampilkan aplikasi sistem', 'Show system apps'],
+  'target_clear': ['Tangkap semua aplikasi', 'Capture all apps'],
+  'target_note': ['Kosongkan pilihan untuk menangkap semua aplikasi. Perubahan memulai ulang capture.', 'Leave empty to capture all apps. Changes restart capture.'],
+  'target_saved': ['Tersimpan', 'Saved'],
+  'target_empty': ['Aplikasi tidak ditemukan', 'No apps found'],
   'ws_note': ['Log frame WebSocket', 'WebSocket frame log'],
 };
 
