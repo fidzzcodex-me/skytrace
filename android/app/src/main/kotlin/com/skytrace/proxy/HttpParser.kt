@@ -91,7 +91,7 @@ class MessageReader(private val transport: ByteTransport) {
 
 class ParsedRequestHead(
     val method: String,
-    val target: String,
+    var target: String,
     val version: String,
     val headers: MutableList<Header>
 )
