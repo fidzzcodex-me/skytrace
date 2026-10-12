@@ -12,6 +12,7 @@ import '../widgets/section_header.dart';
 import 'about_screen.dart';
 import 'certificate_screen.dart';
 import 'logs_screen.dart';
+import 'target_apps_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -131,6 +132,14 @@ class SettingsScreen extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page, vertical: AppSpacing.tight),
           child: Column(
             children: [
+              _valueRow(
+                context,
+                label: t.t('target_title'),
+                value: s.targetApps.isEmpty ? t.t('target_all') : '${s.targetApps.length}',
+                icon: FontAwesomeIcons.mobileScreen,
+                onTap: () => Navigator.of(context).push(SlideFromRightRoute<void>(builder: (_) => const TargetAppsScreen())),
+              ),
+              const Divider(),
               _valueRow(
                 context,
                 label: t.t('set_dns'),
