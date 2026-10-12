@@ -157,6 +157,52 @@ class VpnPlugin :
                 VpnServiceManager.start(appContext)
                 result.success(true)
             }
+            "proxyStart" -> {
+                VpnServiceManager.start(appContext, "proxy")
+                result.success(true)
+            }
+            "proxyInfo" -> io(result) {
+                val addresses = mutableListOf<String>()
+                val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
+                while (interfaces != null && interfaces.hasMoreElements()) {
+                    val ni = interfaces.nextElement()
+                    if (!ni.isUp || ni.isLoopback) continue
+                    val addrs = ni.inetAddresses
+                    while (addrs.hasMoreElements()) {
+                        val a = addrs.nextElement()
+                        if (a is java.net.Inet4Address && !a.isLoopbackAddress) addresses.add(a.hostAddress ?: "")
+                    }
+                }
+                mapOf(
+                    "port" to Graph.settings.proxyPort,
+                    "bindAll" to Graph.settings.proxyBindAll,
+                    "authSet" to Graph.settings.proxyAuth.isNotBlank(),
+                    "addresses" to addresses.filter { it.isNotEmpty() }
+                )
+            }
+            "appInfo" -> io(result) {
+                val info = appContext.packageManager.getPackageInfo(appContext.packageName, 0)
+                mapOf(
+                    "versionName" to (info.versionName ?: "0.0.0"),
+                    "packageName" to appContext.packageName
+                )
+            }
+            "openUrl" -> {
+                val url = call.argument<String>("url") ?: ""
+                if (url.startsWith("https://")) {
+                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                    val host = activity
+                    if (host != null) {
+                        host.startActivity(intent)
+                    } else {
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        appContext.startActivity(intent)
+                    }
+                    result.success(true)
+                } else {
+                    result.success(false)
+                }
+            }
             "vpnStop" -> {
                 VpnServiceManager.stop(appContext)
                 result.success(true)
