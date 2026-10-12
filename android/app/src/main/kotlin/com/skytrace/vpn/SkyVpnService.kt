@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
@@ -84,7 +85,18 @@ class SkyVpnService : VpnService() {
                 .addRoute("0.0.0.0", 0)
                 .addDnsServer(settings.dns)
                 .setBlocking(true)
-            builder.addDisallowedApplication(packageName)
+            var allowed = 0
+            for (pkg in settings.targetApps) {
+                if (pkg == packageName) continue
+                try {
+                    builder.addAllowedApplication(pkg)
+                    allowed++
+                } catch (e: PackageManager.NameNotFoundException) {
+                    Logger.w("target app not installed: $pkg")
+                }
+            }
+            if (allowed == 0) builder.addDisallowedApplication(packageName)
+            Logger.i("capture scope: ${if (allowed == 0) "all apps" else "$allowed selected apps"}")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) builder.setMetered(false)
 
             val descriptor = builder.establish() ?: throw IllegalStateException("VPN permission not granted")
