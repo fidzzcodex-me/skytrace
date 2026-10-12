@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -111,3 +111,35 @@ jobs:
           name: kotlin-test-reports
           path: android/app/build/reports/tests
           if-no-files-found: ignore
+
+      - name: Prepare download files
+        if: github.event_name == 'push'
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/SkyTrace-latest.apk
+          (cd dist && sha256sum SkyTrace-latest.apk > SHA256SUMS.txt)
+
+      - name: Move latest tag
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f latest
+          git push -f origin latest
+
+      - name: Publish latest release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: SkyTrace latest build
+          prerelease: true
+          make_latest: "false"
+          body: |
+            Build otomatis dari commit ${{ github.sha }}.
+
+            Unduh SkyTrace-latest.apk lalu pasang di perangkat Android 8.0 atau lebih baru.
+            APK ini memakai kunci debug dan hanya untuk uji coba.
+          files: |
+            dist/SkyTrace-latest.apk
+            dist/SHA256SUMS.txt
