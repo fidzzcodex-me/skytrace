@@ -63,6 +63,34 @@ class SettingsStore(context: Context) {
         get() = prefs.getStringSet("targetApps", emptySet())?.toSet() ?: emptySet()
         set(v) = prefs.edit().putStringSet("targetApps", v.toSet()).apply()
 
+    var captureMode: String
+        get() = prefs.getString("captureMode", "vpn") ?: "vpn"
+        set(v) = prefs.edit().putString("captureMode", v).apply()
+
+    var proxyPort: Int
+        get() = prefs.getInt("proxyPort", 8888)
+        set(v) = prefs.edit().putInt("proxyPort", v).apply()
+
+    var proxyAuth: String
+        get() = prefs.getString("proxyAuth", "") ?: ""
+        set(v) = prefs.edit().putString("proxyAuth", v).apply()
+
+    var proxyBindAll: Boolean
+        get() = prefs.getBoolean("proxyBindAll", true)
+        set(v) = prefs.edit().putBoolean("proxyBindAll", v).apply()
+
+    var bypassHosts: String
+        get() = prefs.getString("bypassHosts", "") ?: ""
+        set(v) = prefs.edit().putString("bypassHosts", v).apply()
+
+    var skippedVersion: String
+        get() = prefs.getString("skippedVersion", "") ?: ""
+        set(v) = prefs.edit().putString("skippedVersion", v).apply()
+
+    var lastUpdateCheck: Long
+        get() = prefs.getLong("lastUpdateCheck", 0L)
+        set(v) = prefs.edit().putLong("lastUpdateCheck", v).apply()
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean("onboardingDone", false)
         set(v) = prefs.edit().putBoolean("onboardingDone", v).apply()
@@ -82,6 +110,13 @@ class SettingsStore(context: Context) {
         "theme" to theme,
         "language" to language,
         "targetApps" to targetApps.toList(),
+        "captureMode" to captureMode,
+        "proxyPort" to proxyPort,
+        "proxyAuth" to proxyAuth,
+        "proxyBindAll" to proxyBindAll,
+        "bypassHosts" to bypassHosts,
+        "skippedVersion" to skippedVersion,
+        "lastUpdateCheck" to lastUpdateCheck,
         "onboardingDone" to onboardingDone
     )
 
@@ -101,6 +136,13 @@ class SettingsStore(context: Context) {
                 "clearOnStart" -> (v as? Boolean)?.let { clearOnStart = it }
                 "theme" -> (v as? String)?.let { theme = it }
                 "language" -> (v as? String)?.let { language = it }
+                "captureMode" -> (v as? String)?.takeIf { it == "vpn" || it == "proxy" }?.let { captureMode = it }
+                "proxyPort" -> (v as? Number)?.let { proxyPort = it.toInt().coerceIn(1024, 65535) }
+                "proxyAuth" -> (v as? String)?.let { proxyAuth = it.trim() }
+                "proxyBindAll" -> (v as? Boolean)?.let { proxyBindAll = it }
+                "bypassHosts" -> (v as? String)?.let { bypassHosts = it }
+                "skippedVersion" -> (v as? String)?.let { skippedVersion = it }
+                "lastUpdateCheck" -> (v as? Number)?.let { lastUpdateCheck = it.toLong() }
                 "targetApps" -> (v as? List<*>)?.let { list -> targetApps = list.filterIsInstance<String>().toSet() }
                 "onboardingDone" -> (v as? Boolean)?.let { onboardingDone = it }
             }
