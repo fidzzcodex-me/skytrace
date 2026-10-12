@@ -83,6 +83,19 @@ flutter run
 flutter build apk --release
 ```
 
+## Dua metode capture
+
+| Metode | Kapan dipakai | Cara kerja |
+| --- | --- | --- |
+| VPN | Default. Menangkap traffic aplikasi yang dipilih atau semua aplikasi | VPN lokal tanpa root, semua TCP dan DNS lewat SkyTrace |
+| Remote proxy | Aplikasi yang menolak berjalan saat VPN aktif | SkyTrace membuka proxy HTTP di port 8888. Atur proxy Wi-Fi perangkat ke alamat yang tampil di Beranda |
+
+Pilih metode di Beranda (hanya bisa diganti saat capture mati). Pada mode proxy, perangkat lain di jaringan yang sama juga bisa memakai alamat itu. Kamu bisa mengunci proxy dengan password (`user:pass`) di Setelan. Aplikasi yang mengabaikan proxy sistem tidak akan tertangkap pada mode ini.
+
+## Popup update
+
+SkyTrace memeriksa rilis terbaru di GitHub setiap 12 jam. Yang dibaca adalah release resmi bertag (misalnya `v1.1.0`), bukan release "latest build" otomatis. Bila versi di GitHub lebih tinggi dari versi terpasang, muncul popup berisi catatan rilis dengan tombol Unduh, Nanti, dan Lewati versi ini. Alamat repo diatur di `lib/utils/app_config.dart`.
+
 ## Cara pakai
 
 1. Buka SkyTrace dan ikuti onboarding.
