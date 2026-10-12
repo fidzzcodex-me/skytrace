@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/settings_provider.dart';
+import '../providers/update_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
 import '../theme/component_styles.dart';
@@ -31,7 +32,7 @@ class AboutScreen extends ConsumerWidget {
                   children: [
                     const AppLogo(variant: LogoVariant.vertical, height: 200, hero: false).scaleIn(),
                     const SizedBox(height: 24),
-                    Text('${t.t('about_version')} 1.0.0', style: AppText.bodyMedium(p)).fadeInUp(index: 2),
+                    Text('${t.t('about_version')} ${ref.watch(appVersionProvider).valueOrNull ?? ''}', style: AppText.bodyMedium(p)).fadeInUp(index: 2),
                     const SizedBox(height: 12),
                     Text(
                       t.t('about_desc'),
