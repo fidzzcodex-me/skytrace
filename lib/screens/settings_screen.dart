@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../providers/settings_provider.dart';
+import '../providers/update_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
 import '../theme/component_styles.dart';
@@ -17,7 +18,7 @@ import 'target_apps_screen.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
-  Future<String?> _askText(BuildContext context, String title, String initial, {bool number = false}) {
+  Future<String?> _askText(BuildContext context, String title, String initial, {bool number = false, int maxLines = 1, String? hint}) {
     final controller = TextEditingController(text: initial);
     return showScaleDialog<String>(
       context: context,
@@ -37,10 +38,16 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   Text(title, style: AppText.heading(p)),
                   const SizedBox(height: 12),
+                  if (hint != null) ...[
+                    Text(hint, style: AppText.label(p)),
+                    const SizedBox(height: 8),
+                  ],
                   TextField(
                     controller: controller,
                     autofocus: true,
-                    keyboardType: number ? TextInputType.number : TextInputType.text,
+                    minLines: maxLines > 1 ? 4 : 1,
+                    maxLines: maxLines,
+                    keyboardType: number ? TextInputType.number : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
                     style: AppText.mono(p, size: 14),
                     decoration: AppComponents.input(p),
                   ),
@@ -233,6 +240,58 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
         ),
+        SectionHeader(title: t.t('set_proxy')),
+        AnimatedCard(
+          index: 1,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page, vertical: AppSpacing.tight),
+          child: Column(
+            children: [
+              _valueRow(
+                context,
+                label: t.t('set_proxy_port'),
+                value: '${s.proxyPort}',
+                icon: FontAwesomeIcons.globe,
+                onTap: () => editNumber('proxyPort', t.t('set_proxy_port'), s.proxyPort),
+              ),
+              const Divider(),
+              _valueRow(
+                context,
+                label: t.t('set_proxy_auth'),
+                value: s.proxyAuth.isEmpty ? '-' : '****',
+                icon: FontAwesomeIcons.key,
+                onTap: () async {
+                  final v = await _askText(context, t.t('set_proxy_auth'), s.proxyAuth);
+                  if (v != null) await controller.update({'proxyAuth': v});
+                },
+              ),
+              const Divider(),
+              _switchRow(
+                context,
+                label: t.t('set_proxy_all'),
+                icon: FontAwesomeIcons.signal,
+                value: s.proxyBindAll,
+                onChanged: (v) => controller.update({'proxyBindAll': v}),
+              ),
+              const Divider(),
+              _valueRow(
+                context,
+                label: t.t('set_bypass'),
+                value: '${s.bypassHosts.split(RegExp(r'[\n,; ]+')).where((e) => e.trim().isNotEmpty).length}',
+                icon: FontAwesomeIcons.ban,
+                onTap: () async {
+                  final v = await _askText(
+                    context,
+                    t.t('set_bypass'),
+                    s.bypassHosts,
+                    maxLines: 8,
+                    hint: t.t('set_bypass_hint'),
+                  );
+                  if (v != null) await controller.update({'bypassHosts': v});
+                },
+              ),
+            ],
+          ),
+        ),
         SectionHeader(title: t.t('set_appearance')),
         AnimatedCard(
           index: 1,
@@ -280,6 +339,24 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               _valueRow(
                 context,
+                label: t.t('set_update'),
+                value: ref.watch(appVersionProvider).valueOrNull ?? '',
+                icon: FontAwesomeIcons.download,
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final controller = ref.read(updateProvider.notifier);
+                  await controller.check(manual: true);
+                  final state = ref.read(updateProvider);
+                  if (state.error != null) {
+                    messenger.showSnackBar(SnackBar(content: Text(t.t('update_error'))));
+                  } else if (state.upToDate) {
+                    messenger.showSnackBar(SnackBar(content: Text(t.t('update_none'))));
+                  }
+                },
+              ),
+              const Divider(),
+              _valueRow(
+                context,
                 label: t.t('set_certificate'),
                 value: '',
                 icon: FontAwesomeIcons.certificate,
@@ -306,5 +383,26 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const _SettingsTitle()),
+      body: const SettingsScreen(),
+    );
+  }
+}
+
+class _SettingsTitle extends ConsumerWidget {
+  const _SettingsTitle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Text(ref.watch(stringsProvider).t('nav_settings'));
   }
 }
