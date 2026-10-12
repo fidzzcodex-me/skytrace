@@ -44,6 +44,10 @@ final settingsProvider = StateNotifierProvider<SettingsController, SettingsState
   (ref) => SettingsController(ref.watch(trafficRepositoryProvider)),
 );
 
+final installedAppsProvider = FutureProvider.autoDispose.family<List<InstalledApp>, bool>(
+  (ref, includeSystem) => ref.watch(trafficRepositoryProvider).installedApps(includeSystem: includeSystem),
+);
+
 final stringsProvider = Provider<Strings>(
   (ref) => Strings(ref.watch(settingsProvider.select((s) => s.settings.language))),
 );
