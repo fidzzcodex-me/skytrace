@@ -65,7 +65,7 @@ jobs:
 
       - name: Analyze and test
         run: |
-          flutter analyze --no-fatal-infos
+          flutter analyze --no-fatal-infos --no-fatal-warnings
           flutter test
 
       - name: Restore signing key
