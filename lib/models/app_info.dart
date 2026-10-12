@@ -41,6 +41,7 @@ enum VpnPhase { stopped, starting, running, stopping, error }
 class VpnStatus {
   const VpnStatus({
     this.phase = VpnPhase.stopped,
+    this.mode = 'vpn',
     this.error = '',
     this.startedAt = 0,
     this.requests = 0,
@@ -50,6 +51,7 @@ class VpnStatus {
   });
 
   final VpnPhase phase;
+  final String mode;
   final String error;
   final int startedAt;
   final int requests;
@@ -65,6 +67,7 @@ class VpnStatus {
     final phase = VpnPhase.values.firstWhere((p) => p.name == raw, orElse: () => VpnPhase.stopped);
     return VpnStatus(
       phase: phase,
+      mode: (j['mode'] ?? 'vpn') as String,
       error: (j['error'] ?? '') as String,
       startedAt: ((j['startedAt'] ?? 0) as num).toInt(),
       requests: ((j['requests'] ?? 0) as num).toInt(),
@@ -116,6 +119,13 @@ class InstalledApp {
 class AppSettings {
   const AppSettings({
     this.targetApps = const [],
+    this.captureMode = 'vpn',
+    this.proxyPort = 8888,
+    this.proxyAuth = '',
+    this.proxyBindAll = true,
+    this.bypassHosts = '',
+    this.skippedVersion = '',
+    this.lastUpdateCheck = 0,
     this.dns = '8.8.8.8',
     this.connectTimeoutMs = 15000,
     this.readTimeoutMs = 30000,
@@ -133,6 +143,13 @@ class AppSettings {
   });
 
   final List<String> targetApps;
+  final String captureMode;
+  final int proxyPort;
+  final String proxyAuth;
+  final bool proxyBindAll;
+  final String bypassHosts;
+  final String skippedVersion;
+  final int lastUpdateCheck;
   final String dns;
   final int connectTimeoutMs;
   final int readTimeoutMs;
@@ -150,6 +167,13 @@ class AppSettings {
 
   factory AppSettings.fromMap(Map<dynamic, dynamic> m) => AppSettings(
         targetApps: ((m['targetApps'] ?? const []) as List).map((e) => e.toString()).toList(),
+        captureMode: (m['captureMode'] ?? 'vpn') as String,
+        proxyPort: ((m['proxyPort'] ?? 8888) as num).toInt(),
+        proxyAuth: (m['proxyAuth'] ?? '') as String,
+        proxyBindAll: (m['proxyBindAll'] ?? true) as bool,
+        bypassHosts: (m['bypassHosts'] ?? '') as String,
+        skippedVersion: (m['skippedVersion'] ?? '') as String,
+        lastUpdateCheck: ((m['lastUpdateCheck'] ?? 0) as num).toInt(),
         dns: (m['dns'] ?? '8.8.8.8') as String,
         connectTimeoutMs: ((m['connectTimeoutMs'] ?? 15000) as num).toInt(),
         readTimeoutMs: ((m['readTimeoutMs'] ?? 30000) as num).toInt(),
@@ -258,4 +282,36 @@ class SeriesPoint {
         minute: ((j['minute'] ?? 0) as num).toInt(),
         count: ((j['count'] ?? 0) as num).toInt(),
       );
+}
+
+class ProxyInfo {
+  const ProxyInfo({this.port = 8888, this.bindAll = true, this.authSet = false, this.addresses = const []});
+
+  final int port;
+  final bool bindAll;
+  final bool authSet;
+  final List<String> addresses;
+
+  factory ProxyInfo.fromMap(Map<dynamic, dynamic> m) => ProxyInfo(
+        port: ((m['port'] ?? 8888) as num).toInt(),
+        bindAll: (m['bindAll'] ?? true) as bool,
+        authSet: (m['authSet'] ?? false) as bool,
+        addresses: ((m['addresses'] ?? const []) as List).map((e) => e.toString()).toList(),
+      );
+}
+
+class UpdateInfo {
+  const UpdateInfo({
+    required this.version,
+    required this.notes,
+    required this.pageUrl,
+    required this.apkUrl,
+    required this.publishedAt,
+  });
+
+  final String version;
+  final String notes;
+  final String pageUrl;
+  final String? apkUrl;
+  final String publishedAt;
 }
