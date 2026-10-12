@@ -68,6 +68,26 @@ SYN_RCVD --(ACK dari klien)--> ESTABLISHED
 6. Bila handshake gagal, host masuk daftar bypass dan koneksi berikutnya diteruskan sebagai tunnel.
 7. Koneksi upstream memakai `SSLSocket` dengan SNI, verifikasi hostname bawaan, atau trust-all bila opsi diaktifkan.
 
+## Mode remote proxy
+
+```
+Klien (HP ini atau perangkat lain)
+   | proxy Wi-Fi ke ip:8888
+   v
+ProxyService (ServerSocket)
+   |
+LocalProxyEngine.serveProxyConnection
+   |-- CONNECT host:port --> 200 Connection Established --> byte pertama
+   |        TLS  --> TlsInterceptor --> HTTP loop
+   |        HTTP --> HTTP loop
+   |        lain --> tunnel
+   |-- GET http://host/path --> normalisasi ke origin-form --> HTTP loop
+   v
+socket upstream biasa (tidak lewat VPN)
+```
+
+Mesin HTTP sama persis dengan mode VPN. Perbedaannya hanya sumber koneksi: tidak ada `TcpSession`, dan aplikasi asal tidak diketahui sehingga dicatat sebagai `Proxy <ip klien>`. Password proxy memakai Basic `Proxy-Authorization` dan diperiksa pada request pertama setiap koneksi.
+
 ## Alur satu request HTTP
 
 ```
