@@ -62,6 +62,18 @@ class TrafficRepository {
 
   Future<Uint8List?> appIcon(String package) => _api.invoke<Uint8List>('appIcon', {'package': package});
 
+  Future<ProxyInfo> proxyInfo() async {
+    final map = await _api.invoke<Map<dynamic, dynamic>>('proxyInfo');
+    return ProxyInfo.fromMap(map ?? const {});
+  }
+
+  Future<String> appVersion() async {
+    final map = await _api.invoke<Map<dynamic, dynamic>>('appInfo');
+    return ((map ?? const {})['versionName'] ?? '0.0.0') as String;
+  }
+
+  Future<bool> openUrl(String url) async => (await _api.invoke<bool>('openUrl', {'url': url})) ?? false;
+
   Future<List<InstalledApp>> installedApps({bool includeSystem = false}) async {
     final raw = await _api.invokeJsonList('installedApps', {'includeSystem': includeSystem});
     return raw.map((e) => InstalledApp.fromJson(e as Map<String, dynamic>)).toList();
