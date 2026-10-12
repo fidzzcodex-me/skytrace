@@ -62,6 +62,11 @@ class TrafficRepository {
 
   Future<Uint8List?> appIcon(String package) => _api.invoke<Uint8List>('appIcon', {'package': package});
 
+  Future<List<InstalledApp>> installedApps({bool includeSystem = false}) async {
+    final raw = await _api.invokeJsonList('installedApps', {'includeSystem': includeSystem});
+    return raw.map((e) => InstalledApp.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   Future<List<RewriteRule>> rules() async {
     final raw = await _api.invokeJsonList('ruleList');
     return raw.map((e) => RewriteRule.fromJson(e as Map<String, dynamic>)).toList();
