@@ -20,6 +20,7 @@ import '../widgets/stat_tile.dart';
 import '../widgets/trace_arc.dart';
 import 'breakpoint_screen.dart';
 import 'certificate_screen.dart';
+import 'target_apps_screen.dart';
 import 'traffic_detail_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -59,6 +60,7 @@ class DashboardScreen extends ConsumerWidget {
       }
     }
 
+    final targets = ref.watch(settingsProvider.select((s) => s.settings.targetApps));
     final running = vpn.isRunning;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.page),
@@ -96,7 +98,7 @@ class DashboardScreen extends ConsumerWidget {
                                 )
                               : null,
                           color: running ? null : p.surface,
-                          border: Border.all(color: AppColors.primaryBlue.withOpacity(running ? 0 : 0.4), width: 2),
+                          border: Border.all(color: AppColors.primaryBlue.withValues(alpha: running ? 0 : 0.4), width: 2),
                           boxShadow: AppComponents.softShadow(p),
                         ),
                         alignment: Alignment.center,
@@ -139,6 +141,32 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ).fadeInUp(),
+        const SizedBox(height: AppSpacing.cardGap),
+        AnimatedCard(
+          index: 1,
+          onTap: () => Navigator.of(context).push(
+            SlideFromRightRoute<void>(builder: (_) => const TargetAppsScreen()),
+          ),
+          child: Row(
+            children: [
+              const FaIcon(FontAwesomeIcons.mobileScreen, size: 18, color: AppColors.primaryBlue),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(t.t('target_title'), style: AppText.label(p)),
+                    Text(
+                      targets.isEmpty ? t.t('target_all') : '${targets.length} ${t.t('target_count')}',
+                      style: AppText.bodyMedium(p),
+                    ),
+                  ],
+                ),
+              ),
+              const FaIcon(FontAwesomeIcons.arrowRight, size: 14, color: AppColors.primaryBlue),
+            ],
+          ),
+        ),
         const SizedBox(height: AppSpacing.cardGap),
         Row(
           children: [
