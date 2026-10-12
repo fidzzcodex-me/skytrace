@@ -43,6 +43,7 @@ class SkyVpnService : VpnService() {
         when (intent?.action) {
             ACTION_STOP -> {
                 stopVpn()
+                stopSelf()
                 return START_NOT_STICKY
             }
             else -> startVpn()
@@ -104,7 +105,7 @@ class SkyVpnService : VpnService() {
             val writer = TunWriter(FileOutputStream(descriptor.fileDescriptor))
             tun = writer
             val udp = UdpRelay(this, writer, settings, serviceScope)
-            val engine = LocalProxyEngine(this, serviceScope)
+            val engine = LocalProxyEngine({ protect(it) }, serviceScope)
             val trafficRouter = TrafficRouter(writer, udp, engine, serviceScope)
             router = trafficRouter
             trafficRouter.startSweeper()
