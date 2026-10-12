@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.VpnService
@@ -41,6 +42,8 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.io.ByteArrayOutputStream
 
 class VpnPlugin :
@@ -288,6 +291,31 @@ class VpnPlugin :
                 Graph.settings.update(call.arguments as? Map<*, *> ?: emptyMap<String, Any>())
                 Graph.breakpoints.timeoutSeconds = Graph.settings.breakpointTimeoutSec
                 Graph.settings.toMap()
+            }
+            "installedApps" -> io(result) {
+                val includeSystem = call.argument<Boolean>("includeSystem") ?: false
+                val pm = appContext.packageManager
+                val apps = pm.getInstalledApplications(0)
+                    .filter { it.packageName != appContext.packageName }
+                    .filter { includeSystem || pm.getLaunchIntentForPackage(it.packageName) != null }
+                    .map { info ->
+                        val label = try {
+                            pm.getApplicationLabel(info).toString()
+                        } catch (e: Exception) {
+                            info.packageName
+                        }
+                        Triple(label, info.packageName, (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0)
+                    }
+                    .sortedBy { it.first.lowercase() }
+                JsonArray(
+                    apps.map {
+                        buildJsonObject {
+                            put("label", it.first)
+                            put("package", it.second)
+                            put("system", it.third)
+                        }
+                    }
+                ).toString()
             }
             "appIcon" -> io(result) { loadIcon(call.argument<String>("package") ?: "") }
             "logs" -> io(result) { Logger.recent() }
