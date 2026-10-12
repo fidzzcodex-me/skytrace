@@ -51,6 +51,15 @@
                 android:value="local_vpn_http_debugging" />
         </service>
 
+        <service
+            android:name=".vpn.ProxyService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="local_http_debugging_proxy" />
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
