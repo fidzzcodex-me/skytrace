@@ -59,6 +59,10 @@ class SettingsStore(context: Context) {
         get() = prefs.getString("language", "id") ?: "id"
         set(v) = prefs.edit().putString("language", v).apply()
 
+    var targetApps: Set<String>
+        get() = prefs.getStringSet("targetApps", emptySet())?.toSet() ?: emptySet()
+        set(v) = prefs.edit().putStringSet("targetApps", v.toSet()).apply()
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean("onboardingDone", false)
         set(v) = prefs.edit().putBoolean("onboardingDone", v).apply()
@@ -77,6 +81,7 @@ class SettingsStore(context: Context) {
         "clearOnStart" to clearOnStart,
         "theme" to theme,
         "language" to language,
+        "targetApps" to targetApps.toList(),
         "onboardingDone" to onboardingDone
     )
 
@@ -96,6 +101,7 @@ class SettingsStore(context: Context) {
                 "clearOnStart" -> (v as? Boolean)?.let { clearOnStart = it }
                 "theme" -> (v as? String)?.let { theme = it }
                 "language" -> (v as? String)?.let { language = it }
+                "targetApps" -> (v as? List<*>)?.let { list -> targetApps = list.filterIsInstance<String>().toSet() }
                 "onboardingDone" -> (v as? Boolean)?.let { onboardingDone = it }
             }
         }
