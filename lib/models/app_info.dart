@@ -99,8 +99,23 @@ class CertStatus {
       );
 }
 
+class InstalledApp {
+  const InstalledApp({required this.package, required this.label, required this.system});
+
+  final String package;
+  final String label;
+  final bool system;
+
+  factory InstalledApp.fromJson(Map<String, dynamic> j) => InstalledApp(
+        package: (j['package'] ?? '') as String,
+        label: (j['label'] ?? '') as String,
+        system: (j['system'] ?? false) as bool,
+      );
+}
+
 class AppSettings {
   const AppSettings({
+    this.targetApps = const [],
     this.dns = '8.8.8.8',
     this.connectTimeoutMs = 15000,
     this.readTimeoutMs = 30000,
@@ -117,6 +132,7 @@ class AppSettings {
     this.onboardingDone = false,
   });
 
+  final List<String> targetApps;
   final String dns;
   final int connectTimeoutMs;
   final int readTimeoutMs;
@@ -133,6 +149,7 @@ class AppSettings {
   final bool onboardingDone;
 
   factory AppSettings.fromMap(Map<dynamic, dynamic> m) => AppSettings(
+        targetApps: ((m['targetApps'] ?? const []) as List).map((e) => e.toString()).toList(),
         dns: (m['dns'] ?? '8.8.8.8') as String,
         connectTimeoutMs: ((m['connectTimeoutMs'] ?? 15000) as num).toInt(),
         readTimeoutMs: ((m['readTimeoutMs'] ?? 30000) as num).toInt(),
