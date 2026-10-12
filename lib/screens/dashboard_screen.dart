@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -6,6 +7,7 @@ import '../models/app_info.dart';
 import '../providers/rule_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/traffic_provider.dart';
+import '../providers/update_provider.dart';
 import '../providers/vpn_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
@@ -61,6 +63,7 @@ class DashboardScreen extends ConsumerWidget {
     }
 
     final targets = ref.watch(settingsProvider.select((s) => s.settings.targetApps));
+    final mode = ref.watch(settingsProvider.select((s) => s.settings.captureMode));
     final running = vpn.isRunning;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.page),
@@ -142,7 +145,17 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ).fadeInUp(),
         const SizedBox(height: AppSpacing.cardGap),
-        AnimatedCard(
+        _ModeSelector(
+          mode: mode,
+          locked: vpn.isRunning || vpn.isBusy,
+          strings: t,
+          onChanged: (value) => ref.read(settingsProvider.notifier).update({'captureMode': value}),
+        ).fadeInUp(index: 1),
+        const SizedBox(height: AppSpacing.cardGap),
+        if (mode == 'proxy')
+          const _ProxyCard()
+        else
+          AnimatedCard(
           index: 1,
           onTap: () => Navigator.of(context).push(
             SlideFromRightRoute<void>(builder: (_) => const TargetAppsScreen()),
@@ -304,6 +317,162 @@ class _QuickAction extends StatelessWidget {
           FaIcon(icon, size: 20, color: AppColors.primaryBlue),
           const SizedBox(height: 8),
           Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(p).copyWith(fontSize: 11.5)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeSelector extends StatelessWidget {
+  const _ModeSelector({required this.mode, required this.locked, required this.strings, required this.onChanged});
+
+  final String mode;
+  final bool locked;
+  final Strings strings;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    Widget chip(String value, String label, IconData icon) {
+      final selected = mode == value;
+      return Expanded(
+        child: GestureDetector(
+          onTap: locked || selected ? null : () => onChanged(value),
+          child: AnimatedContainer(
+            duration: AppMotion.base,
+            curve: AppMotion.curve,
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            decoration: BoxDecoration(
+              gradient: selected ? AppComponents.primaryGradient : null,
+              borderRadius: BorderRadius.circular(AppRadius.control),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FaIcon(icon, size: 14, color: selected ? AppColors.cloudWhite : AppColors.primaryBlue),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: AppText.bodyMedium(p).copyWith(
+                    color: selected ? AppColors.cloudWhite : p.textPrimary,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Opacity(
+      opacity: locked ? 0.7 : 1,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: p.surfaceAlt,
+              borderRadius: BorderRadius.circular(AppRadius.control + 4),
+            ),
+            child: Row(
+              children: [
+                chip('vpn', strings.t('mode_vpn'), FontAwesomeIcons.shieldHalved),
+                chip('proxy', strings.t('mode_proxy'), FontAwesomeIcons.globe),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              locked
+                  ? strings.t('mode_locked')
+                  : mode == 'proxy'
+                      ? strings.t('mode_proxy_hint')
+                      : strings.t('mode_vpn_hint'),
+              style: AppText.label(p),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProxyCard extends ConsumerWidget {
+  const _ProxyCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(stringsProvider);
+    final p = context.palette;
+    final running = ref.watch(vpnProvider.select((v) => v.isRunning));
+    final info = ref.watch(proxyInfoProvider);
+
+    return AnimatedCard(
+      index: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const FaIcon(FontAwesomeIcons.globe, size: 16, color: AppColors.primaryBlue),
+              const SizedBox(width: 10),
+              Expanded(child: Text(t.t('proxy_title'), style: AppText.heading(p))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(t.t('proxy_steps'), style: AppText.caption(p).copyWith(fontSize: 12.5)),
+          const SizedBox(height: 10),
+          info.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: LinearProgressIndicator(minHeight: 3),
+            ),
+            error: (e, _) => Text('$e', style: AppText.caption(p).copyWith(color: AppColors.errorRed)),
+            data: (data) {
+              final hosts = data.bindAll ? data.addresses : <String>['127.0.0.1'];
+              if (hosts.isEmpty) {
+                return Text(t.t('proxy_no_ip'), style: AppText.caption(p));
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final host in hosts)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(AppRadius.control),
+                      onTap: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        await Clipboard.setData(ClipboardData(text: '$host:${data.port}'));
+                        messenger.showSnackBar(SnackBar(content: Text(t.t('copied')), duration: const Duration(seconds: 1)));
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: p.surfaceAlt,
+                          borderRadius: BorderRadius.circular(AppRadius.control),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text('$host:${data.port}', style: AppText.mono(p, size: 14))),
+                            const FaIcon(FontAwesomeIcons.copy, size: 14, color: AppColors.primaryBlue),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (data.authSet) Text(t.t('proxy_auth_on'), style: AppText.label(p)),
+                  if (data.bindAll) Text(t.t('proxy_other'), style: AppText.label(p)),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 6),
+          Text(running ? t.t('proxy_limit') : t.t('proxy_off_note'), style: AppText.label(p)),
         ],
       ),
     );
