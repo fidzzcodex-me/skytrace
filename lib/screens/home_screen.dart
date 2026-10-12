@@ -4,11 +4,14 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../providers/rule_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/update_provider.dart';
+import '../providers/vpn_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
-import '../theme/component_styles.dart';
 import '../theme/text_styles.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/sky_nav_bar.dart';
+import '../widgets/update_dialog.dart';
 import 'dashboard_screen.dart';
 import 'rules_screen.dart';
 import 'settings_screen.dart';
@@ -25,29 +28,48 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _index = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(updateProvider.notifier).check();
+    });
+  }
+
   void goTo(int index) => setState(() => _index = index);
+
+  Future<void> _togglePower() async {
+    final t = ref.read(stringsProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final error = await ref.read(vpnProvider.notifier).toggle();
+    if (error != null) {
+      messenger.showSnackBar(SnackBar(content: Text(error == 'vpn_denied' ? t.t('vpn_denied') : error)));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(stringsProvider);
     final p = context.palette;
     final pending = ref.watch(rulesProvider.select((s) => s.pending.length));
+    final vpn = ref.watch(vpnProvider);
 
-    final items = <_NavItem>[
-      _NavItem(FontAwesomeIcons.house, t.t('nav_home')),
-      _NavItem(FontAwesomeIcons.list, t.t('nav_traffic')),
-      _NavItem(FontAwesomeIcons.sliders, t.t('nav_rules'), badge: pending),
-      _NavItem(FontAwesomeIcons.chartLine, t.t('nav_stats')),
-      _NavItem(FontAwesomeIcons.gear, t.t('nav_settings')),
+    ref.listen<UpdateState>(updateProvider, (previous, next) {
+      final info = next.info;
+      if (next.popupPending && info != null) {
+        ref.read(updateProvider.notifier).consumePopup();
+        showUpdateDialog(context, info, next.currentVersion);
+      }
+    });
+
+    final items = <SkyNavItem>[
+      SkyNavItem(icon: FontAwesomeIcons.house, label: t.t('nav_home')),
+      SkyNavItem(icon: FontAwesomeIcons.list, label: t.t('nav_traffic')),
+      SkyNavItem(icon: FontAwesomeIcons.sliders, label: t.t('nav_rules'), badge: pending),
+      SkyNavItem(icon: FontAwesomeIcons.chartLine, label: t.t('nav_stats')),
     ];
 
-    final titles = [
-      'SkyTrace',
-      t.t('nav_traffic'),
-      t.t('nav_rules'),
-      t.t('nav_stats'),
-      t.t('nav_settings'),
-    ];
+    final titles = ['SkyTrace', t.t('nav_traffic'), t.t('nav_rules'), t.t('nav_stats')];
 
     return Scaffold(
       appBar: AppBar(
@@ -62,6 +84,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: t.t('settings_page'),
+            onPressed: () => Navigator.of(context).push(
+              SlideFromRightRoute<void>(builder: (_) => const SettingsPage()),
+            ),
+            icon: const FaIcon(FontAwesomeIcons.gear, size: 18),
+          ),
+          const SizedBox(width: 4),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
           child: Container(height: 0.5, color: p.surfaceAlt),
@@ -74,92 +106,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const TrafficScreen(),
           const RulesScreen(),
           const StatsScreen(),
-          const SettingsScreen(),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          height: AppSpacing.navHeight,
-          decoration: BoxDecoration(
-            color: p.surface,
-            border: Border(top: BorderSide(color: p.surfaceAlt, width: 0.5)),
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < items.length; i++)
-                Expanded(child: _NavButton(item: items[i], active: i == _index, onTap: () => goTo(i))),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  const _NavItem(this.icon, this.label, {this.badge = 0});
-
-  final IconData icon;
-  final String label;
-  final int badge;
-}
-
-class _NavButton extends StatelessWidget {
-  const _NavButton({required this.item, required this.active, required this.onTap});
-
-  final _NavItem item;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.palette;
-    final color = active ? AppColors.primaryBlue : AppColors.primaryBlue.withOpacity(0.5);
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: AppMotion.fast,
-            curve: AppMotion.curve,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-            decoration: BoxDecoration(
-              color: active ? p.surfaceAlt : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                FaIcon(item.icon, size: 17, color: color),
-                if (item.badge > 0)
-                  Positioned(
-                    right: -8,
-                    top: -6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(color: AppColors.errorRed, borderRadius: BorderRadius.circular(8)),
-                      child: Text(
-                        '${item.badge}',
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            item.label,
-            maxLines: 1,
-            style: AppText.label(p).copyWith(
-              fontSize: 10.5,
-              color: color,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
+      bottomNavigationBar: SkyNavBar(
+        items: items,
+        index: _index,
+        onChanged: goTo,
+        running: vpn.isRunning,
+        busy: vpn.isBusy,
+        onPower: _togglePower,
+        powerLabel: vpn.isRunning ? t.t('vpn_stop') : t.t('vpn_start'),
       ),
     );
   }
