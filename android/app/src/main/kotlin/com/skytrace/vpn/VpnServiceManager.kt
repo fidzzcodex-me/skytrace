@@ -45,13 +45,26 @@ object VpnServiceManager {
 
     fun prepareIntent(context: Context): Intent? = VpnService.prepare(context)
 
-    fun start(context: Context) {
-        val intent = Intent(context, SkyVpnService::class.java).setAction(SkyVpnService.ACTION_START)
+    @Volatile
+    var activeMode: String = "vpn"
+        private set
+
+    fun start(context: Context, mode: String = "vpn") {
+        activeMode = mode
+        val intent = if (mode == "proxy") {
+            Intent(context, ProxyService::class.java).setAction(ProxyService.ACTION_START)
+        } else {
+            Intent(context, SkyVpnService::class.java).setAction(SkyVpnService.ACTION_START)
+        }
         ContextCompat.startForegroundService(context, intent)
     }
 
     fun stop(context: Context) {
-        val intent = Intent(context, SkyVpnService::class.java).setAction(SkyVpnService.ACTION_STOP)
+        val intent = if (activeMode == "proxy") {
+            Intent(context, ProxyService::class.java).setAction(ProxyService.ACTION_STOP)
+        } else {
+            Intent(context, SkyVpnService::class.java).setAction(SkyVpnService.ACTION_STOP)
+        }
         context.startService(intent)
     }
 
@@ -66,6 +79,7 @@ object VpnServiceManager {
 
     fun statusJson() = buildJsonObject {
         put("state", mutableState.value.name.lowercase())
+        put("mode", activeMode)
         put("error", lastError ?: "")
         put("startedAt", startedAt)
         put("requests", LiveStats.requests.get())
