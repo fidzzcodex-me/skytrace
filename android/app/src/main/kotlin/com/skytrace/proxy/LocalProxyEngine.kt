@@ -1,12 +1,12 @@
 package com.skytrace.proxy
 
-import android.net.VpnService
 import com.skytrace.repo.Graph
 import com.skytrace.repo.TrafficEntity
 import com.skytrace.rule.BreakpointDecision
 import com.skytrace.rule.BreakpointEdit
 import com.skytrace.util.Logger
 import com.skytrace.util.isHttpMethodPrefix
+import com.skytrace.util.globToRegex
 import com.skytrace.util.isProbablyText
 import com.skytrace.util.toIpString
 import com.skytrace.util.u8
@@ -26,6 +26,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.security.SecureRandom
+import java.util.Base64
 import java.security.cert.X509Certificate
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -39,7 +40,7 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
 class LocalProxyEngine(
-    private val service: VpnService,
+    private val protectSocket: (Socket) -> Unit,
     private val scope: CoroutineScope
 ) {
     private class Upstream(
@@ -55,7 +56,8 @@ class LocalProxyEngine(
     }
 
     private class Conn(
-        val session: TcpSession,
+        val dstIp: ByteArray?,
+        val dstPort: Int,
         val client: ByteTransport,
         val reader: MessageReader,
         val scheme: String,
@@ -108,8 +110,8 @@ class LocalProxyEngine(
         if (looksTls) {
             val sni = TlsInterceptor.parseSni(first)
             val hostKey = sni ?: label
-            if (!Graph.settings.tlsInterception || bypass.contains(hostKey)) {
-                tunnel(session, first, hostKey, "tls", app)
+            if (!Graph.settings.tlsInterception || bypass.contains(hostKey) || userBypass(hostKey)) {
+                tunnel(PrefixedTransport(first, session), session.dstIp, session.dstPort, hostKey, "tls", app)
                 return
             }
             val result = try {
@@ -118,35 +120,131 @@ class LocalProxyEngine(
                 throw e
             } catch (e: Exception) {
                 bypass.add(hostKey)
-                recordTlsFailure(session, hostKey, app, e)
+                recordTlsFailure(hostKey, session.dstPort, session.dstIp, app, e)
                 session.reset()
                 return
             }
-            val conn = Conn(session, result.transport, MessageReader(result.transport), "https", result.serverName ?: label, app)
+            val conn = Conn(session.dstIp, session.dstPort, result.transport, MessageReader(result.transport), "https", result.serverName ?: label, app)
             serveHttp(conn)
             return
         }
 
         if (isHttpMethodPrefix(first)) {
             val transport = PrefixedTransport(first, session)
-            serveHttp(Conn(session, transport, MessageReader(transport), "http", label, app))
+            serveHttp(Conn(session.dstIp, session.dstPort, transport, MessageReader(transport), "http", label, app))
             return
         }
-        tunnel(session, first, label, "tcp", app)
+        tunnel(PrefixedTransport(first, session), session.dstIp, session.dstPort, label, "tcp", app)
     }
 
-    private suspend fun recordTlsFailure(session: TcpSession, host: String, app: AppIdentity, error: Exception) {
+    private var bypassRaw: String = ""
+    private var bypassRegexes: List<Regex> = emptyList()
+
+    private fun userBypass(host: String): Boolean {
+        val raw = Graph.settings.bypassHosts
+        if (raw != bypassRaw) {
+            bypassRegexes = raw.split('\n', ',', ' ', ';')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .map { it.globToRegex() }
+            bypassRaw = raw
+        }
+        return bypassRegexes.any { it.containsMatchIn(host) }
+    }
+
+    private fun proxyAuthorized(headers: List<Header>): Boolean {
+        val auth = Graph.settings.proxyAuth
+        if (auth.isBlank()) return true
+        val expected = "Basic " + Base64.getEncoder().encodeToString(auth.toByteArray())
+        return headers.headerValue("Proxy-Authorization") == expected
+    }
+
+    suspend fun serveProxyConnection(socket: Socket) {
+        LiveStats.connections.incrementAndGet()
+        val transport = SocketTransport(socket)
+        val clientIp = socket.inetAddress?.hostAddress ?: "unknown"
+        val app = AppIdentity(-1, "proxy:$clientIp", "Proxy $clientIp")
+        try {
+            val reader = MessageReader(transport)
+            val raw = reader.readHead() ?: return
+            val head = try {
+                HttpParser.parseRequestHead(raw)
+            } catch (e: IOException) {
+                writeSimple(transport, 400, "Bad Request", "SkyTrace proxy could not parse the request: ${e.message}")
+                return
+            }
+            if (!proxyAuthorized(head.headers)) {
+                transport.write(
+                    ("HTTP/1.1 407 Proxy Authentication Required\r\n" +
+                        "Proxy-Authenticate: Basic realm=\"SkyTrace\"\r\n" +
+                        "Content-Length: 0\r\nConnection: close\r\n\r\n").toByteArray()
+                )
+                return
+            }
+            if (head.method.equals("CONNECT", ignoreCase = true)) {
+                val (host, port) = parseHostPort(head.target, "", 443)
+                if (host.isEmpty()) {
+                    writeSimple(transport, 400, "Bad Request", "SkyTrace proxy: missing CONNECT target")
+                    return
+                }
+                transport.write("HTTP/1.1 200 Connection Established\r\n\r\n".toByteArray())
+                val leftover = reader.takeBuffered()
+                val first = if (leftover.isNotEmpty()) leftover else (transport.read() ?: return)
+                serveTunneledStream(transport, first, host, port, app)
+            } else {
+                val rebuilt = PrefixedTransport(raw + reader.takeBuffered(), transport)
+                serveHttp(Conn(null, 80, rebuilt, MessageReader(rebuilt), "http", "", app))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.d("proxy connection ended: ${e.javaClass.simpleName}: ${e.message}")
+        } finally {
+            transport.close()
+        }
+    }
+
+    private suspend fun serveTunneledStream(transport: ByteTransport, first: ByteArray, host: String, port: Int, app: AppIdentity) {
+        val looksTls = first.size >= 3 && first[0].u8() == 0x16 && first[1].u8() == 0x03
+        if (looksTls) {
+            val sni = TlsInterceptor.parseSni(first)
+            val hostKey = sni ?: host
+            if (!Graph.settings.tlsInterception || bypass.contains(hostKey) || userBypass(hostKey)) {
+                tunnel(PrefixedTransport(first, transport), null, port, hostKey, "tls", app)
+                return
+            }
+            val result = try {
+                tls.accept(transport, first, host)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                bypass.add(hostKey)
+                recordTlsFailure(hostKey, port, null, app, e)
+                return
+            }
+            serveHttp(Conn(null, port, result.transport, MessageReader(result.transport), "https", result.serverName ?: host, app))
+            return
+        }
+        if (isHttpMethodPrefix(first)) {
+            val t = PrefixedTransport(first, transport)
+            serveHttp(Conn(null, port, t, MessageReader(t), "http", host, app))
+            return
+        }
+        tunnel(PrefixedTransport(first, transport), null, port, host, "tcp", app)
+    }
+
+    private suspend fun recordTlsFailure(host: String, port: Int, dstIp: ByteArray?, app: AppIdentity, error: Exception) {
         val e = TrafficEntity(
             timestamp = System.currentTimeMillis(),
             method = "TLS",
             scheme = "https",
             host = host,
-            port = session.dstPort,
-            url = "https://$host:${session.dstPort}",
+            port = port,
+            url = "https://$host:$port",
             appPackage = app.packageName,
             appName = app.label,
             uid = app.uid,
-            remoteIp = session.dstIp.toIpString(),
+            remoteIp = dstIp?.toIpString() ?: "",
             error = "TLS handshake failed (${error.message ?: error.javaClass.simpleName}). Client likely rejects the SkyTrace CA or pins certificates. Host is tunneled without interception on the next connection."
         )
         val id = Graph.repository.create(e, Graph.settings.maxEntries)
@@ -154,28 +252,34 @@ class LocalProxyEngine(
         Graph.repository.finish(e)
     }
 
-    private suspend fun tunnel(session: TcpSession, first: ByteArray, host: String, scheme: String, app: AppIdentity) {
+    private suspend fun tunnel(
+        client: ByteTransport,
+        dstIp: ByteArray?,
+        dstPort: Int,
+        host: String,
+        scheme: String,
+        app: AppIdentity
+    ) {
         val started = System.nanoTime()
         val entity = TrafficEntity(
             timestamp = System.currentTimeMillis(),
             method = "TUNNEL",
             scheme = scheme,
             host = host,
-            port = session.dstPort,
-            url = "$scheme://$host:${session.dstPort}",
+            port = dstPort,
+            url = "$scheme://$host:$dstPort",
             appPackage = app.packageName,
             appName = app.label,
             uid = app.uid,
-            remoteIp = session.dstIp.toIpString(),
+            remoteIp = dstIp?.toIpString() ?: "",
             tunnel = true
         )
         entity.id = Graph.repository.create(entity, Graph.settings.maxEntries)
         val up = AtomicLong(0)
         val down = AtomicLong(0)
         try {
-            val socket = openSocket(session.dstIp, null, session.dstPort)
+            val socket = openSocket(dstIp, if (dstIp == null) host else null, dstPort)
             val upstream = SocketTransport(socket)
-            val client = PrefixedTransport(first, session)
             Relay.run(
                 client,
                 upstream,
@@ -235,7 +339,20 @@ class LocalProxyEngine(
         val settings = Graph.settings
         val maxStore = settings.maxBodyKb * 1024
         val started = System.nanoTime()
-        val (hostName, port) = parseHostPort(head.headers.headerValue("Host"), c.hostLabel, c.session.dstPort)
+        if (head.target.startsWith("http://") || head.target.startsWith("https://")) {
+            try {
+                val absolute = java.net.URI(head.target)
+                val defaultPort = if (absolute.scheme == "https") 443 else 80
+                val hostPart = if (absolute.port > 0 && absolute.port != defaultPort) "${absolute.host}:${absolute.port}" else absolute.host
+                head.headers.setHeader("Host", hostPart)
+                val rawPath = absolute.rawPath.let { if (it.isNullOrEmpty()) "/" else it }
+                val query = absolute.rawQuery?.let { "?$it" } ?: ""
+                head.target = rawPath + query
+            } catch (e: Exception) {
+                Logger.d("could not normalize absolute request target")
+            }
+        }
+        val (hostName, port) = parseHostPort(head.headers.headerValue("Host"), c.hostLabel, c.dstPort)
 
         val expect = head.headers.headerValue("Expect")
         if (expect != null && expect.contains("100-continue", true) &&
@@ -270,7 +387,7 @@ class LocalProxyEngine(
             appPackage = c.app.packageName,
             appName = c.app.label,
             uid = c.app.uid,
-            remoteIp = c.session.dstIp.toIpString()
+            remoteIp = c.dstIp?.toIpString() ?: ""
         )
         entity.id = Graph.repository.create(entity, settings.maxEntries)
         LiveStats.requests.incrementAndGet()
@@ -525,7 +642,7 @@ class LocalProxyEngine(
         val existing = c.upstream
         if (existing != null && existing.key == key) return existing
         existing?.close()
-        val ip = if (redirected) null else c.session.dstIp
+        val ip = if (redirected) null else c.dstIp
         val created = connectUpstream(req.scheme, req.host, req.port, ip)
         c.upstream = created
         return created
@@ -581,7 +698,7 @@ class LocalProxyEngine(
     private fun openSocketBlocking(ip: ByteArray?, host: String?, port: Int): Socket {
         val socket = Socket()
         try {
-            service.protect(socket)
+            protectSocket(socket)
             socket.tcpNoDelay = true
             socket.soTimeout = Graph.settings.readTimeoutMs
             val address = when {
