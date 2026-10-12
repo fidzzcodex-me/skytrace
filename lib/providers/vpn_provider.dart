@@ -6,15 +6,17 @@ import '../models/app_info.dart';
 import '../services/api_channel.dart';
 import '../services/vpn_service.dart';
 import 'core_provider.dart';
+import 'settings_provider.dart';
 
 class VpnController extends StateNotifier<VpnStatus> {
-  VpnController(this._vpn, this._api) : super(const VpnStatus()) {
+  VpnController(this._vpn, this._api, this._ref) : super(const VpnStatus()) {
     _sub = _api.events.listen(_onEvent);
     refresh();
   }
 
   final VpnService _vpn;
   final ApiChannel _api;
+  final Ref _ref;
   StreamSubscription<AppEvent>? _sub;
 
   void _onEvent(AppEvent event) {
@@ -33,6 +35,12 @@ class VpnController extends StateNotifier<VpnStatus> {
 
   Future<String?> start() async {
     try {
+      final mode = _ref.read(settingsProvider).settings.captureMode;
+      if (mode == 'proxy') {
+        await _vpn.requestNotifications();
+        await _vpn.startProxy();
+        return null;
+      }
       final granted = await _vpn.prepare();
       if (!granted) return 'vpn_denied';
       await _vpn.requestNotifications();
@@ -68,5 +76,5 @@ class VpnController extends StateNotifier<VpnStatus> {
 }
 
 final vpnProvider = StateNotifierProvider<VpnController, VpnStatus>(
-  (ref) => VpnController(ref.watch(vpnServiceProvider), ref.watch(apiProvider)),
+  (ref) => VpnController(ref.watch(vpnServiceProvider), ref.watch(apiProvider), ref),
 );
