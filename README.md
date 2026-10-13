@@ -133,35 +133,29 @@ Kunci privat CA hanya tersimpan di penyimpanan privat aplikasi.
 
 `build.yml` berjalan pada push ke `main`, pull request, dan manual dari tab Actions. Workflow menjalankan lint komentar, `flutter analyze`, `flutter test`, unit test Kotlin, lalu membangun APK debug, APK release, dan AAB. Hasilnya ada di bagian Artifacts pada halaman run.
 
+### Kunci tanda tangan tetap (wajib agar update tidak konflik)
+
+Android hanya mau menimpa aplikasi bila tanda tangannya sama. Kunci debug bawaan CI dibuat acak di setiap build, jadi tiap APK berbeda tanda tangan dan harus uninstall dulu. Solusinya satu kunci tetap yang dipakai semua build, dibuat sekali lewat GitHub dan tanpa komputer:
+
+1. Buka Settings, Secrets and variables, Actions, New repository secret. Buat secret bernama `KEYSTORE_PASSWORD` berisi password acak minimal 12 karakter (disarankan 24 karakter). Simpan password itu di tempat aman.
+2. Buka tab Actions, pilih workflow **Create signing key**, tekan Run workflow. Workflow membuat keystore, mengenkripsinya dengan password tadi (AES-256), lalu menyimpannya ke `android/signing/skytrace.keystore.enc`.
+3. Mulai build berikutnya, semua APK (debug, release, dan latest) ditandatangani dengan kunci yang sama. Nomor build naik otomatis dari waktu, jadi APK baru selalu bisa menimpa yang lama.
+4. Lakukan satu kali uninstall pada versi yang masih memakai kunci acak lama. Setelah itu update berjalan mulus.
+
+Keamanan: file `.enc` aman di repo publik selama password kuat dan rahasia. Jangan pernah mengganti kunci (opsi force) kecuali terpaksa, karena semua perangkat harus uninstall lagi.
+
+Cadangan: mekanisme lama dengan empat secret (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`) tetap didukung. Skrip `scripts/generate_keystore.sh` membuat keystore di komputer.
+
 ### Release bertanda tangan
 
-1. Generate keystore:
+Buat tag untuk membuat release resmi:
 
 ```
-bash scripts/generate_keystore.sh skytrace-release.jks skytrace
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
-Skrip meminta password, membuat keystore, dan menulis `skytrace-release.jks.base64.txt`.
-
-2. Simpan empat secret di GitHub: Settings, Secrets and variables, Actions, New repository secret.
-
-| Secret | Isi |
-| --- | --- |
-| KEYSTORE_BASE64 | isi file `skytrace-release.jks.base64.txt` |
-| KEYSTORE_PASSWORD | password keystore |
-| KEY_ALIAS | `skytrace` |
-| KEY_PASSWORD | password key |
-
-3. Trigger release dengan membuat tag:
-
-```
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-4. Buka tab Releases. APK, AAB, dan `SHA256SUMS.txt` terlampir. Unduh `SkyTrace-v1.0.0.apk` lalu pasang di perangkat.
-
-Simpan file keystore asli di tempat aman. Kehilangan keystore berarti update tidak bisa dipasang di atas versi lama.
+`release.yml` menolak berjalan bila kunci belum dibuat. Hasilnya (APK, AAB, `SHA256SUMS.txt`) muncul di tab Releases dan menjadi sumber popup update di aplikasi.
 
 ## Contoh data
 
