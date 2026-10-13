@@ -69,30 +69,28 @@ jobs:
           flutter analyze --no-fatal-infos --no-fatal-warnings
           flutter test
 
-      - name: Restore signing key
+      - name: Setup signing
+        id: signing
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "KEYSTORE_BASE64 secret is missing" >&2
+          bash scripts/setup_signing.sh
+          if [ "${{ steps.signing.outputs.signing }}" = "none" ]; then
+            echo "No signing key found. Create the KEYSTORE_PASSWORD secret and run the Create signing key workflow first" >&2
             exit 1
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
-          {
-            echo "storePassword=$KEYSTORE_PASSWORD"
-            echo "keyPassword=$KEY_PASSWORD"
-            echo "keyAlias=$KEY_ALIAS"
-            echo "storeFile=release.jks"
-          } > android/key.properties
+
+      - name: Compute build number
+        run: echo "BUILD_NUMBER=$(( $(date +%s) / 60 ))" >> "$GITHUB_ENV"
 
       - name: Build signed APK
-        run: flutter build apk --release
+        run: flutter build apk --release --build-number="$BUILD_NUMBER"
 
       - name: Build signed AAB
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --build-number="$BUILD_NUMBER"
 
       - name: Verify APK signature
         run: |
