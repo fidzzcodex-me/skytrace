@@ -23,6 +23,7 @@ import com.skytrace.rule.BreakpointEdit
 import com.skytrace.rule.PendingBreakpoint
 import com.skytrace.util.EventBus
 import com.skytrace.util.Logger
+import com.skytrace.bubble.BubbleController
 import com.skytrace.monitor.MonitorAuth
 import com.skytrace.monitor.MonitorManager
 import com.skytrace.vpn.LiveStats
@@ -212,6 +213,19 @@ class VpnPlugin :
             }
             "trafficDeleteFiltered" -> io(result) {
                 Graph.repository.deleteFiltered(TrafficFilter.fromMap(call.argument<Map<String, Any?>>("filter")))
+            }
+            "bubbleSupport" -> io(result) {
+                val (status, reason) = BubbleController.supportStatus(appContext, fresh = true)
+                mapOf("status" to status, "reason" to reason)
+            }
+            "bubbleSetEnabled" -> {
+                Graph.settings.bubbleEnabled = call.argument<Boolean>("enabled") ?: false
+                BubbleController.refresh()
+                result.success(true)
+            }
+            "bubbleRefresh" -> {
+                BubbleController.refresh()
+                result.success(true)
             }
             "monitorStatus" -> io(result) { MonitorManager.statusMap() }
             "monitorStart" -> {
@@ -481,6 +495,17 @@ class VpnPlugin :
         }
         add("internet", if (reachable) "ok" else "error", if (reachable) "ok" else "fail")
 
+        val (bubbleStatus, _) = BubbleController.supportStatus(appContext, fresh = true)
+        add(
+            "bubble",
+            when (bubbleStatus) {
+                "supported" -> "ok"
+                "needs_permission" -> "warn"
+                else -> "info"
+            },
+            bubbleStatus
+        )
+
         add("mode", "info", Graph.settings.captureMode)
         add("sdk", "info", Build.VERSION.SDK_INT.toString())
         return out
@@ -488,18 +513,25 @@ class VpnPlugin :
 
     private fun openSettingsTarget(target: String) {
         val intent = when (target) {
+            "overlay" -> BubbleController.permissionIntent(appContext)
             "battery" -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
             "vpn" -> Intent(Settings.ACTION_VPN_SETTINGS)
             "network" -> Intent(Settings.ACTION_WIRELESS_SETTINGS)
             "app" -> Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${appContext.packageName}"))
             else -> Intent(Settings.ACTION_SETTINGS)
         }
-        val host = activity
-        if (host != null) {
-            host.startActivity(intent)
-        } else {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            appContext.startActivity(intent)
+        try {
+            val host = activity
+            if (host != null) {
+                host.startActivity(intent)
+            } else {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                appContext.startActivity(intent)
+            }
+        } catch (e: android.content.ActivityNotFoundException) {
+            val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${appContext.packageName}"))
+            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            appContext.startActivity(fallback)
         }
     }
 
