@@ -92,6 +92,27 @@ flutter build apk --release
 
 Pilih metode di Beranda (hanya bisa diganti saat capture mati). Pada mode proxy, perangkat lain di jaringan yang sama juga bisa memakai alamat itu. Kamu bisa mengunci proxy dengan password (`user:pass`) di Setelan. Aplikasi yang mengabaikan proxy sistem tidak akan tertangkap pada mode ini.
 
+## Live Monitor (dashboard di browser PC)
+
+Pantau traffic HP dari PC di jaringan WiFi yang sama tanpa memegang HP.
+
+1. Buka SkyTrace, Setelan, Live Monitor, lalu aktifkan. PIN acak 6 angka muncul sekali. Catat PIN itu.
+2. Aplikasi menampilkan alamat seperti `http://192.168.1.20:8080` dan QR code.
+3. Buka alamat itu di browser PC, masukkan PIN, lalu dashboard live muncul.
+
+Isi dashboard: daftar traffic real-time, filter dan pencarian, detail request dan response, ekspor HAR dan cURL, hapus per item atau berdasarkan filter atau semua, serta jeda dan lanjut perekaman.
+
+Pengaturan ada di aplikasi: aktif atau mati (default mati), port, PIN acak atau PIN sendiri, dan opsi mematikan monitor saat capture berhenti.
+
+Keamanan:
+
+- Default mati dan PIN wajib. PIN disimpan sebagai hash SHA-256 dengan salt, bukan teks asli
+- Lima PIN salah dari satu alamat mengunci alamat itu selama 5 menit, dan ada batas global untuk semua alamat
+- Sesi berakhir setelah 20 menit tanpa aktivitas, terikat ke alamat IP pengguna, dan maksimal 5 sesi
+- Hanya koneksi dari alamat jaringan lokal yang diterima. Alamat internet publik ditolak
+- Semua perubahan data butuh header khusus dan cookie SameSite untuk mencegah CSRF
+- Koneksi memakai HTTP biasa (tidak dienkripsi). Siapa pun di WiFi yang sama dan bisa menyadap lalu lintas dapat melihat PIN. Jangan pakai di WiFi publik
+
 ## Popup update
 
 SkyTrace memeriksa rilis terbaru di GitHub setiap 12 jam. Yang dibaca adalah release resmi bertag (misalnya `v1.1.0`), bukan release "latest build" otomatis. Bila versi di GitHub lebih tinggi dari versi terpasang, muncul popup berisi catatan rilis dengan tombol Unduh, Nanti, dan Lewati versi ini. Alamat repo diatur di `lib/utils/app_config.dart`.
@@ -218,8 +239,11 @@ curl -X POST 'https://api.example.com/v1/login' \
 | --- | --- | --- |
 | Request HTTPS muncul sebagai TUNNEL | Aplikasi menolak sertifikat SkyTrace atau memakai certificate pinning | Pasang CA, tambahkan konfigurasi debug-overrides pada aplikasimu, nonaktifkan pinning di build debug |
 | Entri bermetode TLS dengan error handshake | Klien menolak CA | Sama seperti di atas. Koneksi berikutnya ke host itu otomatis diteruskan tanpa dekripsi |
-| Tidak ada traffic sama sekali | Private DNS atau VPN lain aktif | Matikan Private DNS di pengaturan jaringan dan pastikan hanya SkyTrace yang memakai VPN |
+| Tidak ada traffic sama sekali | VPN lain aktif, atau service dihentikan sistem | Buka Setelan, Diagnostik, lalu ikuti item yang berwarna kuning atau merah |
 | Tombol start gagal | Izin VPN ditolak | Ketuk lagi dan setujui dialog VPN |
+| Lencana "Possible pinning" muncul | Aplikasi menolak sertifikat SkyTrace | Ikuti saran di halaman detail: pasang CA, tambahkan debug-overrides, nonaktifkan pinning pada build debug |
+| Capture mati sendiri di latar belakang | Penghemat baterai sistem | Ikuti panduan di Beranda: Setelan, Aplikasi, SkyTrace, Baterai, Tanpa batasan |
+| Live Monitor tidak bisa dibuka dari PC | PC dan HP beda jaringan, atau port dipakai | Pastikan satu WiFi, cek status di aplikasi, dan ganti port bila perlu |
 | Aplikasi gRPC atau HTTP/2 only gagal | Mesin memakai HTTP/1.1 | Gunakan mode TUNNEL untuk host itu atau matikan Intercept TLS di setelan |
 | Aplikasi HTTP/3 terasa lambat saat awal | QUIC diblokir agar jatuh ke TCP | Normal. Fallback butuh satu sampai dua detik |
 | Nama aplikasi tampil sebagai uid | Android tidak mengembalikan paket untuk uid itu | Biasa terjadi untuk proses sistem |
@@ -250,4 +274,4 @@ skytrace/
 
 ## Lisensi
 
-Pilih lisensi open-source sebelum publikasi (misalnya Apache-2.0 atau MIT) dan tambahkan file `LICENSE`.
+MIT. Lihat berkas `LICENSE`. Kalau kamu lebih suka Apache-2.0, ganti isi `LICENSE` dengan teks Apache-2.0 dan perbarui bagian ini.
