@@ -42,6 +42,7 @@ class VpnStatus {
   const VpnStatus({
     this.phase = VpnPhase.stopped,
     this.mode = 'vpn',
+    this.paused = false,
     this.error = '',
     this.startedAt = 0,
     this.requests = 0,
@@ -52,12 +53,25 @@ class VpnStatus {
 
   final VpnPhase phase;
   final String mode;
+  final bool paused;
   final String error;
   final int startedAt;
   final int requests;
   final int up;
   final int down;
   final int connections;
+
+  VpnStatus copyWith({bool? paused}) => VpnStatus(
+        phase: phase,
+        mode: mode,
+        paused: paused ?? this.paused,
+        error: error,
+        startedAt: startedAt,
+        requests: requests,
+        up: up,
+        down: down,
+        connections: connections,
+      );
 
   bool get isRunning => phase == VpnPhase.running;
   bool get isBusy => phase == VpnPhase.starting || phase == VpnPhase.stopping;
@@ -68,6 +82,7 @@ class VpnStatus {
     return VpnStatus(
       phase: phase,
       mode: (j['mode'] ?? 'vpn') as String,
+      paused: (j['paused'] ?? false) as bool,
       error: (j['error'] ?? '') as String,
       startedAt: ((j['startedAt'] ?? 0) as num).toInt(),
       requests: ((j['requests'] ?? 0) as num).toInt(),
@@ -119,10 +134,13 @@ class InstalledApp {
 class AppSettings {
   const AppSettings({
     this.targetApps = const [],
+    this.monitorPort = 8080,
+    this.monitorStopWithCapture = true,
+    this.monitorPinSet = false,
     this.captureMode = 'vpn',
     this.proxyPort = 8888,
     this.proxyAuth = '',
-    this.proxyBindAll = true,
+    this.proxyBindAll = false,
     this.bypassHosts = '',
     this.skippedVersion = '',
     this.lastUpdateCheck = 0,
@@ -143,6 +161,9 @@ class AppSettings {
   });
 
   final List<String> targetApps;
+  final int monitorPort;
+  final bool monitorStopWithCapture;
+  final bool monitorPinSet;
   final String captureMode;
   final int proxyPort;
   final String proxyAuth;
@@ -167,10 +188,13 @@ class AppSettings {
 
   factory AppSettings.fromMap(Map<dynamic, dynamic> m) => AppSettings(
         targetApps: ((m['targetApps'] ?? const []) as List).map((e) => e.toString()).toList(),
+        monitorPort: ((m['monitorPort'] ?? 8080) as num).toInt(),
+        monitorStopWithCapture: (m['monitorStopWithCapture'] ?? true) as bool,
+        monitorPinSet: (m['monitorPinSet'] ?? false) as bool,
         captureMode: (m['captureMode'] ?? 'vpn') as String,
         proxyPort: ((m['proxyPort'] ?? 8888) as num).toInt(),
         proxyAuth: (m['proxyAuth'] ?? '') as String,
-        proxyBindAll: (m['proxyBindAll'] ?? true) as bool,
+        proxyBindAll: (m['proxyBindAll'] ?? false) as bool,
         bypassHosts: (m['bypassHosts'] ?? '') as String,
         skippedVersion: (m['skippedVersion'] ?? '') as String,
         lastUpdateCheck: ((m['lastUpdateCheck'] ?? 0) as num).toInt(),
@@ -285,7 +309,7 @@ class SeriesPoint {
 }
 
 class ProxyInfo {
-  const ProxyInfo({this.port = 8888, this.bindAll = true, this.authSet = false, this.addresses = const []});
+  const ProxyInfo({this.port = 8888, this.bindAll = false, this.authSet = false, this.addresses = const []});
 
   final int port;
   final bool bindAll;
@@ -294,7 +318,7 @@ class ProxyInfo {
 
   factory ProxyInfo.fromMap(Map<dynamic, dynamic> m) => ProxyInfo(
         port: ((m['port'] ?? 8888) as num).toInt(),
-        bindAll: (m['bindAll'] ?? true) as bool,
+        bindAll: (m['bindAll'] ?? false) as bool,
         authSet: (m['authSet'] ?? false) as bool,
         addresses: ((m['addresses'] ?? const []) as List).map((e) => e.toString()).toList(),
       );
@@ -314,4 +338,47 @@ class UpdateInfo {
   final String pageUrl;
   final String? apkUrl;
   final String publishedAt;
+}
+
+class DiagnosticItem {
+  const DiagnosticItem({required this.id, required this.level, required this.value});
+
+  final String id;
+  final String level;
+  final String value;
+
+  factory DiagnosticItem.fromMap(Map<dynamic, dynamic> m) => DiagnosticItem(
+        id: (m['id'] ?? '') as String,
+        level: (m['level'] ?? 'info') as String,
+        value: (m['value'] ?? '') as String,
+      );
+}
+
+class MonitorStatus {
+  const MonitorStatus({
+    this.state = 'stopped',
+    this.port = 8080,
+    this.error = '',
+    this.pinSet = false,
+    this.sessions = 0,
+    this.urls = const [],
+  });
+
+  final String state;
+  final int port;
+  final String error;
+  final bool pinSet;
+  final int sessions;
+  final List<String> urls;
+
+  bool get running => state == 'running';
+
+  factory MonitorStatus.fromMap(Map<dynamic, dynamic> m) => MonitorStatus(
+        state: (m['state'] ?? 'stopped') as String,
+        port: ((m['port'] ?? 8080) as num).toInt(),
+        error: (m['error'] ?? '') as String,
+        pinSet: (m['pinSet'] ?? false) as bool,
+        sessions: ((m['sessions'] ?? 0) as num).toInt(),
+        urls: ((m['urls'] ?? const []) as List).map((e) => e.toString()).toList(),
+      );
 }
