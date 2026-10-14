@@ -34,6 +34,8 @@ TrafficSummary summary({
 }
 
 void main() {
+  pinningTests();
+
   group('TrafficSummary.matches', () {
     test('empty filter matches everything', () {
       expect(summary().matches(const TrafficFilter()), isTrue);
@@ -92,6 +94,47 @@ void main() {
       expect(status.isRunning, isTrue);
       expect(status.requests, 5);
       expect(VpnStatus.fromJson({'state': 'unknown'}).phase, VpnPhase.stopped);
+    });
+  });
+}
+
+void pinningTests() {
+  TrafficSummary row({String method = 'GET', bool tunnel = false, String message = '', String? error}) {
+    return TrafficSummary.fromJson({
+      'id': 1,
+      'timestamp': 1700000000000,
+      'method': method,
+      'scheme': 'https',
+      'host': 'api.example.com',
+      'path': '/',
+      'statusCode': 0,
+      'responseSize': 0,
+      'requestSize': 0,
+      'contentType': '',
+      'appPackage': 'com.demo',
+      'appName': 'Demo',
+      'totalMs': 5,
+      'modified': false,
+      'isWebSocket': false,
+      'tunnel': tunnel,
+      'statusMessage': message,
+      'error': error,
+    });
+  }
+
+  group('possiblePinning', () {
+    test('flags failed TLS handshakes', () {
+      expect(row(method: 'TLS', error: 'handshake failed').possiblePinning, isTrue);
+    });
+
+    test('flags tunnels created by automatic bypass only', () {
+      expect(row(tunnel: true, message: 'bypass-auto').possiblePinning, isTrue);
+      expect(row(tunnel: true, message: 'bypass-user').possiblePinning, isFalse);
+      expect(row(tunnel: true, message: 'tls-off').possiblePinning, isFalse);
+    });
+
+    test('normal requests are not flagged', () {
+      expect(row().possiblePinning, isFalse);
     });
   });
 }
