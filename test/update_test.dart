@@ -3,6 +3,8 @@ import 'package:skytrace/models/app_info.dart';
 import 'package:skytrace/services/update_service.dart';
 
 void main() {
+  bubbleTests();
+
   group('UpdateService.compare', () {
     test('orders versions numerically', () {
       expect(UpdateService.compare('1.2.0', '1.1.9'), 1);
@@ -40,6 +42,21 @@ void main() {
     test('defaults to vpn and reads proxy', () {
       expect(VpnStatus.fromJson({'state': 'running'}).mode, 'vpn');
       expect(VpnStatus.fromJson({'state': 'running', 'mode': 'proxy'}).mode, 'proxy');
+    });
+  });
+}
+
+void bubbleTests() {
+  group('BubbleSupport', () {
+    test('maps the three native states', () {
+      expect(const BubbleSupport(status: 'supported').supported, isTrue);
+      expect(const BubbleSupport(status: 'needs_permission').needsPermission, isTrue);
+      expect(const BubbleSupport(status: 'unsupported', reason: 'device').unsupported, isTrue);
+    });
+
+    test('parses native map and falls back to unsupported', () {
+      expect(BubbleSupport.fromMap({'status': 'supported', 'reason': ''}).supported, isTrue);
+      expect(BubbleSupport.fromMap(const {}).unsupported, isTrue);
     });
   });
 }
