@@ -19,6 +19,7 @@ class TrafficSummary {
     required this.modified,
     required this.isWebSocket,
     required this.tunnel,
+    required this.statusMessage,
     required this.error,
   });
 
@@ -38,7 +39,10 @@ class TrafficSummary {
   final bool modified;
   final bool isWebSocket;
   final bool tunnel;
+  final String statusMessage;
   final String? error;
+
+  bool get possiblePinning => (method == 'TLS' && error != null) || (tunnel && statusMessage == 'bypass-auto');
 
   bool get isPending => statusCode == 0 && error == null && !tunnel && totalMs == 0;
   bool get isFailed => error != null;
@@ -60,6 +64,7 @@ class TrafficSummary {
         modified: (json['modified'] ?? false) as bool,
         isWebSocket: (json['isWebSocket'] ?? false) as bool,
         tunnel: (json['tunnel'] ?? false) as bool,
+        statusMessage: (json['statusMessage'] ?? '') as String,
         error: json['error'] as String?,
       );
 
@@ -151,6 +156,8 @@ class TrafficDetail {
   final BodyView response;
   final Timings timings;
   final String raw;
+
+  bool get possiblePinning => (method == 'TLS' && error != null) || (tunnel && statusMessage == 'bypass-auto');
 
   static List<HeaderPair> _headers(dynamic value) =>
       ((value ?? const []) as List).map((e) => HeaderPair.fromJson(e as Map<String, dynamic>)).toList();
