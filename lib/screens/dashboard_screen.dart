@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../models/app_info.dart';
+import '../providers/core_provider.dart';
 import '../providers/rule_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/traffic_provider.dart';
@@ -18,10 +19,12 @@ import '../utils/strings.dart';
 import '../widgets/animated_card.dart';
 import '../widgets/request_tile.dart';
 import '../widgets/section_header.dart';
+import '../widgets/sky_button.dart';
 import '../widgets/stat_tile.dart';
 import '../widgets/trace_arc.dart';
 import 'breakpoint_screen.dart';
 import 'certificate_screen.dart';
+import 'monitor_screen.dart';
 import 'target_apps_screen.dart';
 import 'traffic_detail_screen.dart';
 
@@ -65,10 +68,54 @@ class DashboardScreen extends ConsumerWidget {
     final targets = ref.watch(settingsProvider.select((s) => s.settings.targetApps));
     final mode = ref.watch(settingsProvider.select((s) => s.settings.captureMode));
     final running = vpn.isRunning;
+    final batteryExempt = ref.watch(batteryExemptProvider).valueOrNull ?? true;
+    final batteryDismissed = ref.watch(batteryBannerDismissedProvider);
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.page),
       cacheExtent: 600,
       children: [
+        if (!batteryExempt && !batteryDismissed) ...[
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.page),
+            decoration: BoxDecoration(
+              color: AppColors.warningAmber.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.warningAmber.withValues(alpha: 0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const FaIcon(FontAwesomeIcons.bolt, size: 16, color: AppColors.warningAmber),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(t.t('battery_title'), style: AppText.heading(p))),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(t.t('battery_body'), style: AppText.caption(p).copyWith(fontSize: 12.5)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SkyButton(
+                        label: t.t('battery_open'),
+                        icon: const FaIcon(FontAwesomeIcons.gear),
+                        onPressed: () => ref.read(trafficRepositoryProvider).openSettings('battery'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    TextButton(
+                      onPressed: () => ref.read(batteryBannerDismissedProvider.notifier).state = true,
+                      child: Text(t.t('battery_later')),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ).fadeInUp(),
+          const SizedBox(height: AppSpacing.cardGap),
+        ],
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.card + 4),
@@ -257,6 +304,17 @@ class DashboardScreen extends ConsumerWidget {
                 label: t.t('open_rules'),
                 onTap: onOpenRules,
                 index: 6,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.cardGap),
+            Expanded(
+              child: _QuickAction(
+                icon: FontAwesomeIcons.globe,
+                label: t.t('nav_monitor'),
+                index: 7,
+                onTap: () => Navigator.of(context).push(
+                  SlideFromRightRoute<void>(builder: (_) => const MonitorScreen()),
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.cardGap),
@@ -463,6 +521,14 @@ class _ProxyCard extends ConsumerWidget {
                             const FaIcon(FontAwesomeIcons.copy, size: 14, color: AppColors.primaryBlue),
                           ],
                         ),
+                      ),
+                    ),
+                  if (data.bindAll && !data.authSet)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        t.t('proxy_open_warn'),
+                        style: AppText.label(p).copyWith(color: AppColors.errorRed, fontWeight: FontWeight.w600),
                       ),
                     ),
                   if (data.authSet) Text(t.t('proxy_auth_on'), style: AppText.label(p)),
