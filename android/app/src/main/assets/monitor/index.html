@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkyTrace Live Monitor</title>
+<style>
+:root {
+  --blue: #4A90E2; --sky: #E8F4FD; --accent: #87CEEB; --deep: #2C5F9E;
+  --bg: #F6FAFE; --card: #FFFFFF; --text: #1A2B4A; --muted: #7A8FA6; --line: #DCE9F5;
+  --ok: #4CAF50; --warn: #FFB300; --err: #E53935;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0E1A2B; --card: #15253B; --text: #E6EEF8; --muted: #8FA3BC; --line: #22385A; --sky: #1C3250; }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font-family: "Plus Jakarta Sans", Inter, Poppins, system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+.hidden { display: none !important; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 12px; }
+button:hover { border-color: var(--blue); }
+button.primary { background: linear-gradient(90deg, var(--accent), var(--blue)); color: #fff; border: 0; font-weight: 600; }
+button.danger { color: var(--err); }
+input, select { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+input:focus, select:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+.login { height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(var(--sky), var(--bg)); }
+.login-card { width: 340px; max-width: 92vw; background: var(--card); border-radius: 20px; padding: 28px; box-shadow: 0 10px 30px rgba(74, 144, 226, 0.18); text-align: center; }
+.login-card img { height: 72px; }
+.login-card h1 { font-size: 20px; margin: 12px 0 4px; }
+.login-card p { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+.login-card input { width: 100%; text-align: center; letter-spacing: 0.5em; font-size: 22px; margin-bottom: 12px; }
+.login-card button { width: 100%; padding: 11px; }
+.err { color: var(--err); min-height: 18px; margin-top: 10px; font-size: 13px; }
+#app { height: 100%; display: flex; flex-direction: column; }
+header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header img { height: 30px; }
+header h1 { font-size: 16px; margin: 0; color: var(--deep); }
+@media (prefers-color-scheme: dark) { header h1 { color: var(--accent); } }
+.pill { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--sky); color: var(--deep); }
+.pill.on { background: rgba(76, 175, 80, 0.15); color: var(--ok); }
+.pill.warn { background: rgba(255, 179, 0, 0.18); color: #B77F00; }
+.spacer { flex: 1; }
+.menu { position: relative; }
+.menu-list { position: absolute; right: 0; top: 110%; background: var(--card); border: 1px solid var(--line); border-radius: 12px; min-width: 190px; padding: 6px; z-index: 20; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); }
+.menu-list button { display: block; width: 100%; text-align: left; border: 0; background: transparent; }
+.menu-list button:hover { background: var(--sky); }
+.toolbar { display: flex; gap: 8px; padding: 10px 16px; flex-wrap: wrap; align-items: center; }
+.toolbar input[type=search] { flex: 1; min-width: 180px; }
+.toolbar label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+main { flex: 1; display: flex; min-height: 0; padding: 0 16px 16px; gap: 12px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; min-height: 0; overflow: hidden; position: relative; }
+#listPanel { flex: 1.3; display: flex; flex-direction: column; }
+#detailPanel { flex: 1; overflow: auto; padding: 14px; }
+#rows { overflow: auto; flex: 1; }
+.row { display: grid; grid-template-columns: 4px 62px 56px 1fr 120px 70px 66px; gap: 10px; align-items: center; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.row:hover { background: var(--sky); }
+.row.sel { background: var(--sky); }
+.rail { align-self: stretch; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 11px; font-weight: 700; text-align: center; }
+.host { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.path { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pin { display: inline-block; margin-left: 6px; padding: 1px 6px; font-size: 10px; border-radius: 6px; background: rgba(255, 179, 0, 0.2); color: #B77F00; }
+.fresh { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 5; box-shadow: 0 4px 14px rgba(74, 144, 226, 0.4); }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 10px 0; }
+.tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; padding: 8px 12px; color: var(--muted); }
+.tabs button.act { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+pre { background: var(--sky); border-radius: 12px; padding: 12px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 12px; max-height: 420px; margin: 8px 0; }
+table.kv { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.kv td { padding: 4px 6px; vertical-align: top; border-bottom: 1px solid var(--line); word-break: break-word; }
+table.kv td:first-child { color: var(--deep); font-weight: 600; width: 34%; }
+.empty { color: var(--muted); text-align: center; padding: 40px 12px; }
+.note { background: rgba(255, 179, 0, 0.12); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; margin: 8px 0; }
+.bars { margin: 6px 0; }
+.bar { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
+.bar span.l { width: 70px; color: var(--muted); }
+.bar div.t { flex: 1; background: var(--sky); border-radius: 6px; height: 10px; position: relative; }
+.bar div.f { position: absolute; top: 0; bottom: 0; border-radius: 6px; }
+@media (max-width: 900px) {
+  main { flex-direction: column; }
+  .row { grid-template-columns: 4px 56px 50px 1fr 60px; }
+  .row .c-app, .row .c-time { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="login" class="login hidden">
+  <div class="login-card">
+    <img src="/logo.png" alt="SkyTrace">
+    <h1>SkyTrace Live Monitor</h1>
+    <p>Masukkan PIN yang tampil di aplikasi SkyTrace.</p>
+    <input id="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="PIN">
+    <button id="loginBtn" class="primary">Masuk</button>
+    <div id="loginErr" class="err"></div>
+  </div>
+</div>
+<div id="app" class="hidden">
+  <header>
+    <img src="/logo.png" alt="">
+    <h1>SkyTrace Live Monitor</h1>
+    <span id="pillCapture" class="pill">...</span>
+    <span id="pillLive" class="pill">Live</span>
+    <span id="stat" class="cell"></span>
+    <div class="spacer"></div>
+    <button id="pauseBtn">Jeda rekam</button>
+    <div class="menu">
+      <button id="exportBtn">Ekspor</button>
+      <div id="exportMenu" class="menu-list hidden">
+        <button data-fmt="har">HAR (hasil filter)</button>
+        <button data-fmt="curl">cURL (hasil filter)</button>
+        <button data-fmt="raw">Raw (hasil filter)</button>
+      </div>
+    </div>
+    <div class="menu">
+      <button id="clearBtn" class="danger">Hapus</button>
+      <div id="clearMenu" class="menu-list hidden">
+        <button id="clearFiltered">Hapus hasil filter</button>
+        <button id="clearAll" class="danger">Hapus semua histori</button>
+      </div>
+    </div>
+    <button id="logoutBtn">Keluar</button>
+  </header>
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Cari URL, header, body">
+    <select id="fMethod"><option value="">Method</option><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option><option>HEAD</option><option>OPTIONS</option><option>TUNNEL</option></select>
+    <select id="fStatus"><option value="">Status</option><option>2xx</option><option>3xx</option><option>4xx</option><option>5xx</option><option value="error">error</option></select>
+    <select id="fType"><option value="">Tipe</option><option>json</option><option>html</option><option>xml</option><option>javascript</option><option>text</option><option>image</option></select>
+    <select id="fApp"><option value="">Semua aplikasi</option></select>
+    <input id="fDomain" type="text" placeholder="Domain" size="14">
+    <label><input id="fBodies" type="checkbox"> body</label>
+    <label><input id="fModified" type="checkbox"> dimodifikasi</label>
+  </div>
+  <main>
+    <section id="listPanel" class="panel">
+      <button id="fresh" class="primary fresh hidden"></button>
+      <div id="rows"></div>
+    </section>
+    <section id="detailPanel" class="panel"><div class="empty">Pilih satu request untuk melihat detail.</div></section>
+  </main>
+</div>
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var state = { rows: [], offset: 0, loading: false, done: false, ws: null, frozen: false, held: 0, selected: null, paused: false, tab: 'req', detail: null, lastActivity: Date.now(), reloadTimer: null };
+  var PAGE = 60;
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function api(path, opts) {
+    opts = opts || {};
+    var headers = { 'X-SkyTrace': '1' };
+    if (opts.body) headers['Content-Type'] = 'application/json';
+    return fetch(path, { method: opts.method || 'GET', headers: headers, body: opts.body ? JSON.stringify(opts.body) : undefined, credentials: 'same-origin' }).then(function (res) {
+      if (res.status === 401) { showLogin(); throw new Error('unauthorized'); }
+      return res;
+    });
+  }
+
+  function showLogin() {
+    $('#app').classList.add('hidden');
+    $('#login').classList.remove('hidden');
+    if (state.ws) { try { state.ws.close(); } catch (e) {} state.ws = null; }
+    setTimeout(function () { $('#pin').focus(); }, 50);
+  }
+
+  function showApp() {
+    $('#login').classList.add('hidden');
+    $('#app').classList.remove('hidden');
+    loadFacets();
+    reload();
+    refreshStatus();
+    connectWs();
+  }
+
+  function doLogin() {
+    var pin = $('#pin').value.trim();
+    $('#loginErr').textContent = '';
+    fetch('/api/login', { method: 'POST', headers: { 'X-SkyTrace': '1', 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin }), credentials: 'same-origin' }).then(function (res) {
+      if (res.ok) { $('#pin').value = ''; showApp(); return; }
+      return res.json().then(function (j) {
+        var m = { invalid_pin: 'PIN salah.', locked: 'Terlalu banyak percobaan. Coba lagi beberapa menit lagi.', pin_not_set: 'PIN belum diatur di aplikasi.' };
+        $('#loginErr').textContent = m[j.error] || 'Gagal masuk.';
+      });
+    }).catch(function () { $('#loginErr').textContent = 'Tidak bisa terhubung ke perangkat.'; });
+  }
+
+  function filters() {
+    return {
+      q: $('#q').value.trim(), method: $('#fMethod').value, status: $('#fStatus').value, type: $('#fType').value,
+      app: $('#fApp').value, domain: $('#fDomain').value.trim(), bodies: $('#fBodies').checked ? '1' : '', modified: $('#fModified').checked ? '1' : ''
+    };
+  }
+
+  function qs(extra) {
+    var f = filters(), parts = [];
+    Object.keys(f).forEach(function (k) { if (f[k]) parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(f[k])); });
+    Object.keys(extra || {}).forEach(function (k) { parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(extra[k])); });
+    return parts.join('&');
+  }
+
+  function fmtBytes(n) {
+    if (!n) return '-';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+  function fmtMs(n) { if (!n) return '-'; return n < 1000 ? n + ' ms' : (n / 1000).toFixed(2) + ' s'; }
+  function fmtClock(ts) { var d = new Date(ts); return d.toLocaleTimeString('id-ID', { hour12: false }); }
+
+  function methodColor(m) {
+    return { GET: '#4A90E2', POST: '#4CAF50', PUT: '#FFB300', PATCH: '#2C5F9E', DELETE: '#E53935' }[m] || '#7A8FA6';
+  }
+  function statusColor(r) {
+    if (r.error) return '#E53935';
+    if (r.tunnel || !r.statusCode) return '#7A8FA6';
+    if (r.statusCode >= 500) return '#E53935';
+    if (r.statusCode >= 400) return '#FFB300';
+    if (r.statusCode >= 300) return '#2C5F9E';
+    return '#4CAF50';
+  }
+  function possiblePinning(r) { return (r.method === 'TLS' && !!r.error) || (r.tunnel && r.statusMessage === 'bypass-auto'); }
+
+  function buildRow(r) {
+    var row = el('div', 'row');
+    row.dataset.id = r.id;
+    var rail = el('div', 'rail');
+    rail.style.background = statusColor(r);
+    var m = el('span', 'badge', (r.method || '').slice(0, 7));
+    m.style.background = methodColor(r.method) + '22';
+    m.style.color = methodColor(r.method);
+    var label = r.error ? 'ERR' : r.tunnel ? 'TUN' : r.statusCode ? String(r.statusCode) : '...';
+    var s = el('span', 'badge', label);
+    s.style.background = statusColor(r) + '22';
+    s.style.color = statusColor(r);
+    var mid = el('div');
+    var host = el('div', 'host', r.host);
+    if (possiblePinning(r)) host.appendChild(el('span', 'pin', 'Possible pinning'));
+    mid.appendChild(host);
+    mid.appendChild(el('div', 'path', r.path || '/'));
+    var app = el('div', 'cell c-app', r.appName);
+    var size = el('div', 'cell', fmtBytes(r.tunnel ? r.requestSize + r.responseSize : r.responseSize));
+    var time = el('div', 'cell c-time', fmtClock(r.timestamp));
+    [rail, m, s, mid, app, size, time].forEach(function (c) { row.appendChild(c); });
+    if (state.selected === r.id) row.classList.add('sel');
+    row.addEventListener('click', function () { openDetail(r.id); });
+    return row;
+  }
+
+  function matchesFilter(r) {
+    var f = filters();
+    if (f.method && f.method !== r.method) return false;
+    if (f.app && f.app !== r.appPackage) return false;
+    if (f.domain && r.host.toLowerCase().indexOf(f.domain.toLowerCase()) < 0) return false;
+    if (f.type && (r.contentType || '').toLowerCase().indexOf(f.type) < 0) return false;
+    if (f.modified && !r.modified) return false;
+    if (f.q && (r.host + r.path).toLowerCase().indexOf(f.q.toLowerCase()) < 0) return false;
+    if (f.status) {
+      var c = r.statusCode;
+      if (f.status === 'error') { if (c !== 0 && !r.error) return false; }
+      else if (f.status === '5xx') { if (c < 500) return false; }
+      else { var lo = parseInt(f.status[0], 10) * 100; if (c < lo || c > lo + 99) return false; }
+    }
+    return true;
+  }
+
+  function renderEmpty() {
+    var rows = $('#rows');
+    if (!state.rows.length && !rows.querySelector('.empty')) rows.appendChild(el('div', 'empty', 'Belum ada traffic.'));
+  }
+
+  function reload() {
+    state.rows = [];
+    state.offset = 0;
+    state.done = false;
+    state.held = 0;
+    $('#fresh').classList.add('hidden');
+    $('#rows').textContent = '';
+    loadMore();
+  }
+
+  function loadMore() {
+    if (state.loading || state.done) return;
+    state.loading = true;
+    api('/api/traffic?' + qs({ limit: PAGE, offset: state.offset })).then(function (res) { return res.json(); }).then(function (list) {
+      var box = $('#rows');
+      var empty = box.querySelector('.empty');
+      if (empty) empty.remove();
+      list.forEach(function (r) { state.rows.push(r); box.appendChild(buildRow(r)); });
+      state.offset += list.length;
+      if (list.length < PAGE) state.done = true;
+      state.loading = false;
+      renderEmpty();
+    }).catch(function () { state.loading = false; });
+  }
+
+  function upsert(r) {
+    var idx = -1;
+    for (var i = 0; i < state.rows.length; i++) if (state.rows[i].id === r.id) { idx = i; break; }
+    var box = $('#rows');
+    if (idx >= 0) {
+      state.rows[idx] = r;
+      var old = box.querySelector('[data-id="' + r.id + '"]');
+      if (old) box.replaceChild(buildRow(r), old);
+      if (state.selected === r.id) openDetail(r.id, true);
+      return;
+    }
+    if (!matchesFilter(r)) return;
+    if (state.frozen) { state.held += 1; showFresh(); return; }
+    var empty = box.querySelector('.empty');
+    if (empty) empty.remove();
+    state.rows.unshift(r);
+    box.insertBefore(buildRow(r), box.firstChild);
+    while (state.rows.length > 600) { state.rows.pop(); box.removeChild(box.lastChild); }
+  }
+
+  function showFresh() {
+    var b = $('#fresh');
+    b.textContent = state.held + ' request baru';
+    b.classList.remove('hidden');
+  }
+
+  function removeIds(ids) {
+    ids.forEach(function (id) {
+      state.rows = state.rows.filter(function (r) { return r.id !== id; });
+      var n = $('#rows').querySelector('[data-id="' + id + '"]');
+      if (n) n.remove();
+      if (state.selected === id) { state.selected = null; $('#detailPanel').textContent = ''; $('#detailPanel').appendChild(el('div', 'empty', 'Pilih satu request untuk melihat detail.')); }
+    });
+    renderEmpty();
+  }
+
+  function loadFacets() {
+    api('/api/facets').then(function (res) { return res.json(); }).then(function (f) {
+      var sel = $('#fApp');
+      var keep = sel.value;
+      sel.textContent = '';
+      var first = el('option', '', 'Semua aplikasi');
+      first.value = '';
+      sel.appendChild(first);
+      (f.apps || []).forEach(function (a) { var o = el('option', '', a.appName + ' (' + a.requests + ')'); o.value = a.appPackage; sel.appendChild(o); });
+      sel.value = keep;
+    }).catch(function () {});
+  }
+
+  function updateStatus(s) {
+    var running = s.state === 'running';
+    var p = $('#pillCapture');
+    var modeLabel = s.mode === 'proxy' ? 'Proxy' : 'VPN';
+    p.textContent = running ? 'Capture aktif (' + modeLabel + ')' : 'Capture mati';
+    p.className = 'pill' + (running ? ' on' : '');
+    state.paused = !!s.paused;
+    $('#pauseBtn').textContent = state.paused ? 'Lanjutkan rekam' : 'Jeda rekam';
+    $('#pauseBtn').className = state.paused ? 'primary' : '';
+    var parts = [];
+    if (s.requests !== undefined) parts.push(s.requests + ' request');
+    if (s.total !== undefined) parts.push(s.total + ' tersimpan');
+    $('#stat').textContent = parts.join(' | ');
+  }
+
+  function refreshStatus() {
+    api('/api/status').then(function (r) { return r.json(); }).then(updateStatus).catch(function () {});
+  }
+
+  function connectWs() {
+    if (state.ws) return;
+    var ws = new WebSocket(location.origin.replace(/^http/, 'ws') + '/ws');
+    state.ws = ws;
+    var live = $('#pillLive');
+    ws.onopen = function () { live.className = 'pill on'; live.textContent = 'Live'; };
+    ws.onmessage = function (ev) {
+      var msg;
+      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      var t = msg.type, d = msg.data || {};
+      if (t === 'traffic_new' || t === 'traffic_update') upsert(d);
+      else if (t === 'traffic_deleted') {
+        if (d.ids) removeIds(d.ids);
+        else { clearTimeout(state.reloadTimer); state.reloadTimer = setTimeout(function () { reload(); loadFacets(); }, 150); }
+      }
+      else if (t === 'stats' || t === 'vpn_state') updateStatus(d);
+    };
+    ws.onclose = function () {
+      state.ws = null;
+      live.className = 'pill warn';
+      live.textContent = 'Terputus';
+      setTimeout(function () { if (!$('#app').classList.contains('hidden')) { api('/api/touch', { method: 'POST' }).then(connectWs).catch(function () {}); } }, 2000);
+    };
+  }
+
+  function prettyBody(b) {
+    if (!b || (!b.text && !b.base64)) return null;
+    if (b.isBinary) return '[biner ' + fmtBytes(b.size) + ']\n' + b.base64.slice(0, 2000);
+    var t = b.text;
+    var s = t.trim();
+    if (s[0] === '{' || s[0] === '[') { try { return JSON.stringify(JSON.parse(t), null, 2); } catch (e) {} }
+    return t;
+  }
+
+  function kvTable(list) {
+    var tb = el('table', 'kv');
+    (list || []).forEach(function (h) {
+      var tr = el('tr');
+      tr.appendChild(el('td', '', h.name));
+      tr.appendChild(el('td', '', h.value));
+      tb.appendChild(tr);
+    });
+    return tb;
+  }
+
+  function infoTable(rows) {
+    var tb = el('table', 'kv');
+    rows.forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', '', r[0]));
+      tr.appendChild(el('td', '', r[1]));
+      tb.appendChild(tr);
+    });
+    return tb;
+  }
+
+  function copyText(text, btn) {
+    var done = function () { var old = btn.textContent; btn.textContent = 'Disalin'; setTimeout(function () { btn.textContent = old; }, 1200); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done);
+    else { var ta = el('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); done(); }
+  }
+
+  function renderDetail() {
+    var d = state.detail;
+    var box = $('#detailPanel');
+    box.textContent = '';
+    if (!d) { box.appendChild(el('div', 'empty', 'Pilih satu request untuk melihat detail.')); return; }
+    var head = el('div');
+    var title = el('div', 'host', d.method + '  ' + d.host);
+    head.appendChild(title);
+    head.appendChild(el('div', 'path', d.url));
+    var acts = el('div');
+    acts.style.margin = '10px 0';
+    acts.style.display = 'flex';
+    acts.style.gap = '8px';
+    acts.style.flexWrap = 'wrap';
+    var curl = el('button', '', 'Salin cURL');
+    curl.onclick = function () {
+      api('/api/export?format=curl&ids=' + d.id).then(function (r) { return r.text(); }).then(function (t) { copyText(t.trim(), curl); });
+    };
+    var har = el('button', '', 'Ekspor HAR');
+    har.onclick = function () { window.location = '/api/export?format=har&ids=' + d.id; };
+    var del = el('button', 'danger', 'Hapus');
+    del.onclick = function () {
+      api('/api/traffic/' + d.id, { method: 'DELETE' }).then(function () { removeIds([d.id]); loadFacets(); });
+    };
+    [curl, har, del].forEach(function (b) { acts.appendChild(b); });
+    head.appendChild(acts);
+    box.appendChild(head);
+
+    if (possiblePinning(d)) {
+      box.appendChild(el('div', 'note', 'Possible certificate pinning: aplikasi menolak sertifikat SkyTrace sehingga HTTPS tidak bisa dibaca. Pasang CA di perangkat, pastikan aplikasi mempercayai CA pengguna, atau nonaktifkan pinning pada build debug.'));
+    }
+    if (d.error) box.appendChild(el('div', 'note', d.error));
+
+    var tabs = el('div', 'tabs');
+    [['req', 'Request'], ['res', 'Response'], ['time', 'Waktu'], ['raw', 'Raw'], ['info', 'Info']].forEach(function (t) {
+      var b = el('button', state.tab === t[0] ? 'act' : '', t[1]);
+      b.onclick = function () { state.tab = t[0]; renderDetail(); };
+      tabs.appendChild(b);
+    });
+    box.appendChild(tabs);
+
+    function bodyBlock(b) {
+      var text = prettyBody(b);
+      if (text === null) return el('div', 'empty', 'Tidak ada body');
+      var pre = el('pre', '', text);
+      return pre;
+    }
+
+    if (state.tab === 'req') {
+      box.appendChild(el('div', 'path', d.method + ' ' + d.path + ' ' + d.httpVersion));
+      box.appendChild(kvTable(d.requestHeaders));
+      box.appendChild(bodyBlock(d.request));
+    } else if (state.tab === 'res') {
+      box.appendChild(el('div', 'path', d.httpVersion + ' ' + d.statusCode + ' ' + d.statusMessage));
+      box.appendChild(kvTable(d.responseHeaders));
+      box.appendChild(bodyBlock(d.response));
+    } else if (state.tab === 'time') {
+      var t = d.timings, total = Math.max(t.total, 1);
+      var phases = [['Connect', t.connect, '#2C5F9E'], ['TLS', t.tls, '#87CEEB'], ['Kirim', t.send, '#4A90E2'], ['Tunggu', t.wait, '#FFB300'], ['Terima', t.receive, '#4CAF50']];
+      var wrap = el('div', 'bars');
+      var offset = 0;
+      phases.forEach(function (p) {
+        var row = el('div', 'bar');
+        row.appendChild(el('span', 'l', p[0]));
+        var track = el('div', 't');
+        var fill = el('div', 'f');
+        fill.style.left = (offset / total * 100) + '%';
+        fill.style.width = Math.max(p[1] / total * 100, p[1] ? 1 : 0) + '%';
+        fill.style.background = p[2];
+        track.appendChild(fill);
+        row.appendChild(track);
+        row.appendChild(el('span', '', fmtMs(p[1])));
+        wrap.appendChild(row);
+        offset += p[1];
+      });
+      box.appendChild(wrap);
+      box.appendChild(el('div', 'host', 'Total ' + fmtMs(t.total)));
+    } else if (state.tab === 'raw') {
+      box.appendChild(el('pre', '', d.raw || ''));
+    } else {
+      box.appendChild(infoTable([
+        ['Aplikasi', d.appName + ' (' + d.appPackage + ')'],
+        ['IP tujuan', d.remoteIp ? d.remoteIp + ':' + d.port : '-'],
+        ['Waktu', new Date(d.timestamp).toLocaleString('id-ID')],
+        ['Ukuran request', fmtBytes(d.request.size)],
+        ['Ukuran response', fmtBytes(d.response.size)],
+        ['Dimodifikasi', d.modified ? 'Ya' : 'Tidak']
+      ]));
+    }
+  }
+
+  function openDetail(id, silent) {
+    state.selected = id;
+    if (!silent) {
+      var rows = $('#rows').querySelectorAll('.row');
+      rows.forEach(function (r) { r.classList.toggle('sel', r.dataset.id === String(id)); });
+    }
+    api('/api/traffic/' + id).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.error) return;
+      state.detail = d;
+      renderDetail();
+    });
+  }
+
+  function clearAll() {
+    if (!confirm('Hapus semua histori traffic di perangkat?')) return;
+    api('/api/traffic/clear', { method: 'POST', body: { mode: 'all' } }).then(function () { reload(); loadFacets(); });
+  }
+
+  function clearFiltered() {
+    var f = filters();
+    var any = Object.keys(f).some(function (k) { return !!f[k]; });
+    if (!any) { alert('Belum ada filter yang aktif.'); return; }
+    if (!confirm('Hapus semua request yang cocok dengan filter saat ini?')) return;
+    api('/api/traffic/clear', { method: 'POST', body: { mode: 'filter', filter: f } }).then(function () { reload(); loadFacets(); });
+  }
+
+  function exportData(fmt) {
+    window.location = '/api/export?' + qs({ format: fmt });
+  }
+
+  function toggleMenu(id) {
+    var m = $(id);
+    var open = !m.classList.contains('hidden');
+    document.querySelectorAll('.menu-list').forEach(function (x) { x.classList.add('hidden'); });
+    if (!open) m.classList.remove('hidden');
+  }
+
+  $('#loginBtn').onclick = doLogin;
+  $('#pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+  $('#exportBtn').onclick = function (e) { e.stopPropagation(); toggleMenu('#exportMenu'); };
+  $('#clearBtn').onclick = function (e) { e.stopPropagation(); toggleMenu('#clearMenu'); };
+  document.addEventListener('click', function () { document.querySelectorAll('.menu-list').forEach(function (x) { x.classList.add('hidden'); }); });
+  document.querySelectorAll('#exportMenu button').forEach(function (b) { b.onclick = function () { exportData(b.dataset.fmt); }; });
+  $('#clearAll').onclick = clearAll;
+  $('#clearFiltered').onclick = clearFiltered;
+  $('#pauseBtn').onclick = function () { api('/api/pause', { method: 'POST', body: { paused: !state.paused } }).then(function (r) { return r.json(); }).then(function (j) { updateStatus({ state: 'running', paused: j.paused }); refreshStatus(); }); };
+  $('#logoutBtn').onclick = function () { api('/api/logout', { method: 'POST' }).catch(function () {}).then(function () { showLogin(); }); };
+  $('#fresh').onclick = function () { $('#rows').scrollTop = 0; };
+
+  var debounce = null;
+  function refilter() { clearTimeout(debounce); debounce = setTimeout(reload, 300); }
+  ['#q', '#fDomain'].forEach(function (s) { $(s).addEventListener('input', refilter); });
+  ['#fMethod', '#fStatus', '#fType', '#fApp', '#fBodies', '#fModified'].forEach(function (s) { $(s).addEventListener('change', reload); });
+
+  $('#rows').addEventListener('scroll', function () {
+    var box = $('#rows');
+    var frozen = box.scrollTop > 120;
+    if (state.frozen && !frozen && state.held > 0) { state.frozen = false; reload(); return; }
+    state.frozen = frozen;
+    if (box.scrollTop + box.clientHeight > box.scrollHeight - 300) loadMore();
+  });
+
+  ['click', 'keydown', 'mousemove'].forEach(function (n) { document.addEventListener(n, function () { state.lastActivity = Date.now(); }, { passive: true }); });
+  setInterval(function () {
+    if ($('#app').classList.contains('hidden')) return;
+    if (Date.now() - state.lastActivity < 90000) {
+      if (state.ws && state.ws.readyState === 1) state.ws.send('touch');
+      else api('/api/touch', { method: 'POST' }).catch(function () {});
+    }
+  }, 60000);
+
+  api('/api/status').then(function (r) { return r.json(); }).then(function () { showApp(); }).catch(function () { showLogin(); });
+})();
+</script>
+</body>
+</html>
