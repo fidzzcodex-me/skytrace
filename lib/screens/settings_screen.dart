@@ -10,6 +10,7 @@ import '../theme/component_styles.dart';
 import '../theme/text_styles.dart';
 import '../widgets/animated_card.dart';
 import '../widgets/section_header.dart';
+import '../widgets/bubble_settings.dart';
 import 'about_screen.dart';
 import 'certificate_screen.dart';
 import 'diagnostics_screen.dart';
@@ -242,6 +243,8 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
         ),
+        SectionHeader(title: t.t('bubble_title')),
+        const BubbleSettingsCard(),
         SectionHeader(title: t.t('set_proxy')),
         AnimatedCard(
           index: 1,
