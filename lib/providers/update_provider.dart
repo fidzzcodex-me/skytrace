@@ -87,6 +87,10 @@ final appVersionProvider = FutureProvider<String>(
   (ref) => ref.watch(trafficRepositoryProvider).appVersion(),
 );
 
+final bubbleSupportProvider = FutureProvider.autoDispose<BubbleSupport>(
+  (ref) => ref.watch(trafficRepositoryProvider).bubbleSupport(),
+);
+
 final proxyInfoProvider = FutureProvider.autoDispose<ProxyInfo>((ref) {
   ref.watch(settingsProvider.select((s) => s.settings.proxyPort));
   ref.watch(settingsProvider.select((s) => s.settings.proxyBindAll));
