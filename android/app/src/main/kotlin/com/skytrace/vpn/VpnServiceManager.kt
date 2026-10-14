@@ -20,6 +20,9 @@ object LiveStats {
     val bytesDown = AtomicLong(0)
     val connections = AtomicLong(0)
 
+    @Volatile
+    var paused: Boolean = false
+
     fun reset() {
         requests.set(0)
         bytesUp.set(0)
@@ -86,6 +89,7 @@ object VpnServiceManager {
         put("up", LiveStats.bytesUp.get())
         put("down", LiveStats.bytesDown.get())
         put("connections", activeConnections)
+        put("paused", LiveStats.paused)
     }
 
     fun emitStats() {
