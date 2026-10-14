@@ -2,6 +2,25 @@
 
 Format mengikuti Keep a Changelog dan versi mengikuti Semantic Versioning.
 
+## [1.2.0]
+
+### Ditambahkan
+
+- Live Monitor: dashboard web di HP yang bisa dibuka dari browser PC di WiFi yang sama. Traffic tampil real-time lewat WebSocket, dengan filter, pencarian, detail, ekspor HAR dan cURL, serta hapus histori. Port bisa diubah, ada QR code, PIN 4 sampai 6 angka (disimpan sebagai hash), pembatasan percobaan PIN, sesi berakhir setelah 20 menit tidak aktif, dan hanya menerima koneksi dari jaringan lokal
+- Hapus histori: per item, berdasarkan filter, atau semua, dari aplikasi maupun dari dashboard Live Monitor
+- Deteksi kemungkinan certificate pinning dengan lencana dan saran di halaman detail
+- Panduan optimasi baterai di Beranda dengan tombol langsung ke pengaturan sistem
+- Jeda perekaman, tombol "N request baru" agar daftar tidak loncat saat di-scroll
+- Salin sebagai Python, JavaScript fetch, Kotlin OkHttp, dan HTTPie
+- Ekspor dan impor rules dan breakpoint dalam JSON
+- Halaman Diagnostik untuk memeriksa CA, VPN lain, baterai, notifikasi, dan koneksi
+- Flow control jendela TCP agar upload besar tidak menumpuk di memori
+- Berkas LICENSE (MIT)
+
+### Diubah
+
+- Remote proxy kini hanya mendengarkan localhost secara default. Membuka ke perangkat lain harus dinyalakan di Setelan dan disarankan memakai password
+
 ## [1.1.0]
 
 ### Ditambahkan
