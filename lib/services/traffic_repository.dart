@@ -86,6 +86,19 @@ class TrafficRepository {
     return ((map ?? const {})['batteryExempt'] ?? true) as bool;
   }
 
+  Future<BubbleSupport> bubbleSupport() async {
+    final map = await _api.invoke<Map<dynamic, dynamic>>('bubbleSupport');
+    return BubbleSupport.fromMap(map ?? const {});
+  }
+
+  Future<void> bubbleSetEnabled(bool enabled) async {
+    await _api.invoke<bool>('bubbleSetEnabled', {'enabled': enabled});
+  }
+
+  Future<void> bubbleRefresh() async {
+    await _api.invoke<bool>('bubbleRefresh');
+  }
+
   Future<String?> exportRules() => _api.invoke<String>('rulesExport');
 
   Future<int> importRules(String json) async => (await _api.invoke<int>('rulesImport', {'json': json})) ?? 0;
