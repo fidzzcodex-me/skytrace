@@ -54,6 +54,8 @@ class DiagnosticsScreen extends ConsumerWidget {
         return 'vpn';
       case 'notifications':
         return 'app';
+      case 'bubble':
+        return 'overlay';
       case 'internet':
         return 'network';
       default:
