@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../models/rule.dart';
+import '../providers/core_provider.dart';
 import '../providers/rule_provider.dart';
 import '../providers/settings_provider.dart';
 import '../theme/animations.dart';
@@ -106,6 +108,72 @@ class _RulesScreenState extends ConsumerState<RulesScreen> with SingleTickerProv
     return result == true;
   }
 
+  Future<void> _exportRules() async {
+    final repo = ref.read(trafficRepositoryProvider);
+    final path = await repo.exportRules();
+    if (path != null && path.isNotEmpty) await repo.shareFile(path, 'application/json');
+  }
+
+  Future<void> _importRules() async {
+    final t = ref.read(stringsProvider);
+    final clip = await Clipboard.getData(Clipboard.kTextPlain);
+    final initial = (clip?.text ?? '').trimLeft().startsWith('{') ? clip!.text! : '';
+    if (!mounted) return;
+    final controller = TextEditingController(text: initial);
+    final text = await showScaleDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final p = ctx.palette;
+        return Center(
+          child: Material(
+            color: p.surface,
+            elevation: 6,
+            borderRadius: BorderRadius.circular(AppRadius.dialog),
+            child: Container(
+              width: 340,
+              padding: const EdgeInsets.all(AppSpacing.page + 4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.t('rules_import'), style: AppText.heading(p)),
+                  const SizedBox(height: 6),
+                  Text(t.t('rules_import_hint'), style: AppText.label(p)),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: controller,
+                    minLines: 6,
+                    maxLines: 10,
+                    style: AppText.mono(p, size: 12),
+                    decoration: AppComponents.input(p),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(t.t('cancel'))),
+                      TextButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: Text(t.t('apply'))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    controller.dispose();
+    if (text == null || text.trim().isEmpty || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final count = await ref.read(trafficRepositoryProvider).importRules(text);
+      await ref.read(rulesProvider.notifier).load();
+      messenger.showSnackBar(SnackBar(content: Text('${t.t('rules_imported')}: $count')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('${t.t('error_generic')}: $e')));
+    }
+  }
+
   Future<void> _addNew() async {
     if (_tabs.index == 0) {
       final rule = await showRuleEditor(context, const RewriteRule());
@@ -147,7 +215,7 @@ class _RulesScreenState extends ConsumerState<RulesScreen> with SingleTickerProv
               alignment: Alignment.centerRight,
               padding: const EdgeInsets.only(right: 20),
               decoration: BoxDecoration(
-                color: AppColors.errorRed.withOpacity(0.12),
+                color: AppColors.errorRed.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppRadius.card),
               ),
               child: const FaIcon(FontAwesomeIcons.trash, color: AppColors.errorRed, size: 18),
@@ -271,7 +339,7 @@ class _RulesScreenState extends ConsumerState<RulesScreen> with SingleTickerProv
                 alignment: Alignment.centerRight,
                 padding: const EdgeInsets.only(right: 20),
                 decoration: BoxDecoration(
-                  color: AppColors.errorRed.withOpacity(0.12),
+                  color: AppColors.errorRed.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.card),
                 ),
                 child: const FaIcon(FontAwesomeIcons.trash, color: AppColors.errorRed, size: 18),
@@ -347,7 +415,10 @@ class _RulesScreenState extends ConsumerState<RulesScreen> with SingleTickerProv
       ),
       body: Column(
         children: [
-          TabBar(
+          Row(
+            children: [
+              Expanded(
+                child: TabBar(
             controller: _tabs,
             labelColor: AppColors.primaryBlue,
             unselectedLabelColor: p.textSecondary,
@@ -369,6 +440,21 @@ class _RulesScreenState extends ConsumerState<RulesScreen> with SingleTickerProv
                     ],
                   ],
                 ),
+              ),
+            ],
+          ),
+              ),
+              PopupMenuButton<String>(
+                icon: FaIcon(FontAwesomeIcons.share, size: 16, color: p.brand),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
+                onSelected: (v) {
+                  if (v == 'export') _exportRules();
+                  if (v == 'import') _importRules();
+                },
+                itemBuilder: (_) => [
+                  PopupMenuItem(value: 'export', child: Text(t.t('rules_export'))),
+                  PopupMenuItem(value: 'import', child: Text(t.t('rules_import'))),
+                ],
               ),
             ],
           ),
