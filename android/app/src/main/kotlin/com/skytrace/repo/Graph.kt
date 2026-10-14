@@ -44,6 +44,7 @@ object Graph {
             uids = UidResolver(app)
             replay = ReplayClient(repository, settings)
             breakpoints.timeoutSeconds = settings.breakpointTimeoutSec
+            com.skytrace.bubble.BubbleController.init(app)
             initialized = true
         }
         reloadRules()
