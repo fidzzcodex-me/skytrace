@@ -57,6 +57,10 @@ class RequestTile extends StatelessWidget {
                                 style: AppText.heading(p).copyWith(fontSize: 14),
                               ),
                             ),
+                            if (item.possiblePinning) ...[
+                              const FaIcon(FontAwesomeIcons.lock, size: 12, color: AppColors.warningAmber),
+                              const SizedBox(width: 8),
+                            ],
                             if (item.modified) ...[
                               const FaIcon(FontAwesomeIcons.wandMagic, size: 12, color: AppColors.warningAmber),
                               const SizedBox(width: 8),
