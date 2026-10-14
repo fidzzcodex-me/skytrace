@@ -2,6 +2,14 @@
 
 Format mengikuti Keep a Changelog dan versi mengikuti Semantic Versioning.
 
+## [1.3.0]
+
+### Ditambahkan
+
+- Bubble mengambang di atas aplikasi lain saat capture aktif. Bubble hanya menampilkan ikon dan badge jumlah request baru, tanpa URL atau isi traffic. Bisa digeser (posisi terakhir tersimpan dan menempel ke tepi layar), diketuk untuk panel mini (status, jumlah request, Stop capture, Buka SkyTrace), serta disembunyikan dengan tekan lama atau ditarik ke tanda X
+- Pengecekan dukungan overlay berlapis: versi Android, jenis perangkat (TV, jam, mobil tidak didukung), izin "Tampilkan di atas aplikasi lain", dan uji nyata window manager. Hasilnya tampil di Setelan dan Diagnostik sebagai Didukung, Perlu izin, atau Tidak didukung di perangkat ini
+- Bila tidak didukung, toggle dinonaktifkan dengan keterangan yang jelas dan aplikasi tetap berjalan normal
+
 ## [1.2.0]
 
 ### Ditambahkan
