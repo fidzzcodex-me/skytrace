@@ -75,6 +75,7 @@ object VpnServiceManager {
         lastError = error
         if (newState == VpnState.RUNNING) startedAt = System.currentTimeMillis()
         mutableState.value = newState
+        com.skytrace.bubble.BubbleController.onStateChanged(newState == VpnState.RUNNING)
         EventBus.emit("vpn_state", statusJson())
     }
 
