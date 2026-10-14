@@ -10,6 +10,9 @@ import com.skytrace.rule.RewriteEngine
 import com.skytrace.util.EventBus
 import com.skytrace.util.Logger
 import com.skytrace.util.looksLikeText
+import com.skytrace.vpn.LiveStats
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -66,7 +69,11 @@ class TrafficRepository(context: Context) {
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
     private val insertCounter = AtomicInteger(0)
 
-    suspend fun create(entity: TrafficEntity, maxEntries: Int): Long {
+    suspend fun create(entity: TrafficEntity, maxEntries: Int, force: Boolean = false): Long {
+        if (LiveStats.paused && !force) {
+            entity.id = 0
+            return 0
+        }
         val id = dao.insert(entity)
         entity.id = id
         if (insertCounter.incrementAndGet() % 100 == 0) {
@@ -81,6 +88,7 @@ class TrafficRepository(context: Context) {
     }
 
     suspend fun finish(entity: TrafficEntity) {
+        if (entity.id == 0L) return
         try {
             dao.update(entity)
         } catch (e: Exception) {
@@ -91,16 +99,38 @@ class TrafficRepository(context: Context) {
 
     suspend fun get(id: Long): TrafficEntity? = dao.byId(id)
 
-    suspend fun clear() = dao.deleteAll()
+    suspend fun clear() {
+        dao.deleteAll()
+        EventBus.emit("traffic_deleted", buildJsonObject { put("reload", true) })
+    }
 
-    suspend fun delete(ids: List<Long>) = dao.deleteIds(ids)
+    suspend fun delete(ids: List<Long>) {
+        dao.deleteIds(ids)
+        EventBus.emit(
+            "traffic_deleted",
+            buildJsonObject { put("ids", buildJsonArray { ids.forEach { add(JsonPrimitive(it)) } }) }
+        )
+    }
+
+    suspend fun deleteFiltered(filter: TrafficFilter): Int {
+        val (where, args) = buildWhere(filter)
+        val count = dao.countRaw(SimpleSQLiteQuery("SELECT COUNT(*) FROM traffic $where", args.toTypedArray()))
+        withContext(Dispatchers.IO) {
+            db.openHelper.writableDatabase.execSQL(
+                "DELETE FROM traffic WHERE id IN (SELECT id FROM traffic $where)",
+                args.toTypedArray()
+            )
+        }
+        EventBus.emit("traffic_deleted", buildJsonObject { put("reload", true) })
+        return count
+    }
 
     suspend fun count(): Int = dao.count()
 
     suspend fun list(filter: TrafficFilter, limit: Int, offset: Int): List<TrafficSummary> {
         val (where, args) = buildWhere(filter)
         val sql = "SELECT id, timestamp, method, scheme, host, path, statusCode, responseSize, requestSize, " +
-            "responseContentType AS contentType, appPackage, appName, totalMs, modified, isWebSocket, tunnel, error " +
+            "responseContentType AS contentType, appPackage, appName, totalMs, modified, isWebSocket, tunnel, statusMessage, error " +
             "FROM traffic $where ORDER BY id DESC LIMIT ? OFFSET ?"
         val all = args.toMutableList<Any?>()
         all.add(limit)
@@ -216,6 +246,7 @@ class TrafficRepository(context: Context) {
         put("modified", e.modified)
         put("isWebSocket", e.isWebSocket)
         put("tunnel", e.tunnel)
+        put("statusMessage", e.statusMessage)
         put("error", e.error?.let { JsonPrimitive(it) } ?: kotlinx.serialization.json.JsonNull)
     }
 
