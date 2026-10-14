@@ -12,7 +12,9 @@ import '../widgets/animated_card.dart';
 import '../widgets/section_header.dart';
 import 'about_screen.dart';
 import 'certificate_screen.dart';
+import 'diagnostics_screen.dart';
 import 'logs_screen.dart';
+import 'monitor_screen.dart';
 import 'target_apps_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -361,6 +363,22 @@ class SettingsScreen extends ConsumerWidget {
                 value: '',
                 icon: FontAwesomeIcons.certificate,
                 onTap: () => Navigator.of(context).push(SlideFromRightRoute<void>(builder: (_) => const CertificateScreen())),
+              ),
+              const Divider(),
+              _valueRow(
+                context,
+                label: t.t('monitor_title'),
+                value: '',
+                icon: FontAwesomeIcons.globe,
+                onTap: () => Navigator.of(context).push(SlideFromRightRoute<void>(builder: (_) => const MonitorScreen())),
+              ),
+              const Divider(),
+              _valueRow(
+                context,
+                label: t.t('diag_title'),
+                value: '',
+                icon: FontAwesomeIcons.gauge,
+                onTap: () => Navigator.of(context).push(SlideFromRightRoute<void>(builder: (_) => const DiagnosticsScreen())),
               ),
               const Divider(),
               _valueRow(
