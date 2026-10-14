@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../models/traffic.dart';
 import '../providers/core_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/traffic_provider.dart';
+import '../providers/vpn_provider.dart';
 import '../services/export_service.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
@@ -47,6 +50,7 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
   void _onScroll() {
     if (!_scroll.hasClients) return;
     final pos = _scroll.position;
+    ref.read(trafficProvider.notifier).setFrozen(pos.pixels > 160);
     if (pos.pixels > pos.maxScrollExtent - 500) {
       ref.read(trafficProvider.notifier).loadMore();
     }
@@ -106,6 +110,51 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
     apply(result.isEmpty ? null : result);
   }
 
+  Future<void> _itemMenu(TrafficSummary item) async {
+    final t = ref.read(stringsProvider);
+    final controller = ref.read(trafficProvider.notifier);
+    final hasFilter = !ref.read(trafficProvider).filter.isEmpty;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const FaIcon(FontAwesomeIcons.copy, size: 16, color: AppColors.primaryBlue),
+              title: Text(t.t('copy_url')),
+              onTap: () => Navigator.of(ctx).pop('copy'),
+            ),
+            ListTile(
+              leading: const FaIcon(FontAwesomeIcons.trash, size: 16, color: AppColors.errorRed),
+              title: Text(t.t('del_item')),
+              onTap: () => Navigator.of(ctx).pop('item'),
+            ),
+            if (hasFilter)
+              ListTile(
+                leading: const FaIcon(FontAwesomeIcons.filter, size: 16, color: AppColors.errorRed),
+                title: Text(t.t('del_filtered')),
+                onTap: () => Navigator.of(ctx).pop('filtered'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    if (action == 'copy') {
+      await Clipboard.setData(ClipboardData(text: '${item.scheme}://${item.host}${item.path}'));
+      messenger.showSnackBar(SnackBar(content: Text(t.t('copied')), duration: const Duration(seconds: 1)));
+    } else if (action == 'item') {
+      await controller.deleteItem(item.id);
+      messenger.showSnackBar(SnackBar(content: Text(t.t('del_done')), duration: const Duration(seconds: 1)));
+    } else if (action == 'filtered') {
+      await controller.deleteFiltered();
+      messenger.showSnackBar(SnackBar(content: Text(t.t('del_done')), duration: const Duration(seconds: 1)));
+    }
+  }
+
   Future<void> _confirmClear() async {
     final t = ref.read(stringsProvider);
     final ok = await showScaleDialog<bool>(
@@ -163,6 +212,8 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
     final facets = ref.watch(facetsProvider);
     final p = context.palette;
     final filter = state.filter;
+    final paused = ref.watch(vpnProvider.select((v) => v.paused));
+    final vpnController = ref.read(vpnProvider.notifier);
 
     final apps = facets.valueOrNull?.apps ?? const [];
     final hosts = facets.valueOrNull?.hosts ?? const [];
@@ -219,6 +270,7 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
             }
             final item = state.items[index];
             final tile = RequestTile(
+              onLongPress: () => _itemMenu(item),
               item: item,
               onTap: () => Navigator.of(context).push(
                 SlideFromRightRoute<void>(builder: (_) => TrafficDetailScreen(id: item.id)),
@@ -252,6 +304,15 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
                 ),
               ),
               const SizedBox(width: 4),
+              IconButton(
+                tooltip: paused ? t.t('rec_resume') : t.t('rec_pause'),
+                onPressed: () => vpnController.setPaused(!paused),
+                icon: FaIcon(
+                  paused ? FontAwesomeIcons.play : FontAwesomeIcons.pause,
+                  size: 18,
+                  color: paused ? AppColors.warningAmber : AppColors.primaryBlue,
+                ),
+              ),
               PopupMenuButton<String>(
                 icon: const FaIcon(FontAwesomeIcons.fileArrowDown, size: 18, color: AppColors.primaryBlue),
                 tooltip: t.t('export'),
@@ -359,7 +420,61 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
             ],
           ),
         ),
-        Expanded(child: AnimatedSwitcher(duration: AppMotion.fast, child: KeyedSubtree(key: ValueKey(state.loading), child: body))),
+        if (paused)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.page),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.warningAmber.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.control),
+            ),
+            child: Row(
+              children: [
+                const FaIcon(FontAwesomeIcons.pause, size: 12, color: AppColors.warningAmber),
+                const SizedBox(width: 8),
+                Expanded(child: Text(t.t('rec_paused_banner'), style: AppText.label(p))),
+              ],
+            ),
+          ),
+        Expanded(
+          child: Stack(
+            children: [
+              AnimatedSwitcher(duration: AppMotion.fast, child: KeyedSubtree(key: ValueKey(state.loading), child: body)),
+              if (state.held > 0)
+                Positioned(
+                  top: 8,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Material(
+                      color: AppColors.primaryBlue,
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      elevation: 3,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        onTap: () => _scroll.animateTo(0, duration: AppMotion.base, curve: AppMotion.curve),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const FaIcon(FontAwesomeIcons.arrowUp, size: 12, color: AppColors.cloudWhite),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${state.held} ${t.t('new_requests')}',
+                                style: AppText.button().copyWith(fontSize: 12.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }
