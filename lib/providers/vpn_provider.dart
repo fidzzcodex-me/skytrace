@@ -59,6 +59,15 @@ class VpnController extends StateNotifier<VpnStatus> {
     }
   }
 
+  Future<void> setPaused(bool paused) async {
+    state = state.copyWith(paused: paused);
+    try {
+      await _vpn.setPaused(paused);
+    } on ApiException {
+      state = state.copyWith(paused: !paused);
+    }
+  }
+
   Future<String?> toggle() async {
     if (state.isBusy) return null;
     if (state.isRunning) {
