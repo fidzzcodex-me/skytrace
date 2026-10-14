@@ -88,6 +88,20 @@ socket upstream biasa (tidak lewat VPN)
 
 Mesin HTTP sama persis dengan mode VPN. Perbedaannya hanya sumber koneksi: tidak ada `TcpSession`, dan aplikasi asal tidak diketahui sehingga dicatat sebagai `Proxy <ip klien>`. Password proxy memakai Basic `Proxy-Authorization` dan diperiksa pada request pertama setiap koneksi.
 
+## Live Monitor
+
+```
+Browser PC --HTTP--> MonitorServer (ServerSocket, MonitorService foreground)
+   |  GET /            halaman dashboard (asset monitor/index.html)
+   |  POST /api/login  PIN -> cookie sesi (HttpOnly, SameSite=Strict)
+   |  GET /api/...     data dari TrafficRepository (Room), memerlukan sesi
+   |  GET /ws          WebSocket, mendorong event dari EventBus
+   v
+EventBus (traffic_new, traffic_update, traffic_deleted, stats, vpn_state)
+```
+
+Server ditulis sendiri di atas `ServerSocket` memakai parser HTTP yang sama dengan proxy. Tidak ada dependensi tambahan. Event `breakpoint_*` tidak pernah dikirim ke dashboard. Penghapusan dari aplikasi, dashboard, atau filter memancarkan `traffic_deleted` sehingga semua tampilan tersinkron.
+
 ## Alur satu request HTTP
 
 ```
