@@ -16,6 +16,10 @@ class VpnService {
     await _api.invoke<bool>('proxyStart');
   }
 
+  Future<void> setPaused(bool paused) async {
+    await _api.invoke<bool>('setPaused', {'paused': paused});
+  }
+
   Future<void> stop() async {
     await _api.invoke<bool>('vpnStop');
   }
