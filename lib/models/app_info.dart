@@ -134,6 +134,7 @@ class InstalledApp {
 class AppSettings {
   const AppSettings({
     this.targetApps = const [],
+    this.bubbleEnabled = false,
     this.monitorPort = 8080,
     this.monitorStopWithCapture = true,
     this.monitorPinSet = false,
@@ -161,6 +162,7 @@ class AppSettings {
   });
 
   final List<String> targetApps;
+  final bool bubbleEnabled;
   final int monitorPort;
   final bool monitorStopWithCapture;
   final bool monitorPinSet;
@@ -191,6 +193,7 @@ class AppSettings {
         monitorPort: ((m['monitorPort'] ?? 8080) as num).toInt(),
         monitorStopWithCapture: (m['monitorStopWithCapture'] ?? true) as bool,
         monitorPinSet: (m['monitorPinSet'] ?? false) as bool,
+        bubbleEnabled: (m['bubbleEnabled'] ?? false) as bool,
         captureMode: (m['captureMode'] ?? 'vpn') as String,
         proxyPort: ((m['proxyPort'] ?? 8888) as num).toInt(),
         proxyAuth: (m['proxyAuth'] ?? '') as String,
@@ -380,5 +383,21 @@ class MonitorStatus {
         pinSet: (m['pinSet'] ?? false) as bool,
         sessions: ((m['sessions'] ?? 0) as num).toInt(),
         urls: ((m['urls'] ?? const []) as List).map((e) => e.toString()).toList(),
+      );
+}
+
+class BubbleSupport {
+  const BubbleSupport({this.status = 'unsupported', this.reason = ''});
+
+  final String status;
+  final String reason;
+
+  bool get supported => status == 'supported';
+  bool get needsPermission => status == 'needs_permission';
+  bool get unsupported => !supported && !needsPermission;
+
+  factory BubbleSupport.fromMap(Map<dynamic, dynamic> m) => BubbleSupport(
+        status: (m['status'] ?? 'unsupported') as String,
+        reason: (m['reason'] ?? '') as String,
       );
 }
