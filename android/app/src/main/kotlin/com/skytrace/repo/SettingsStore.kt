@@ -76,7 +76,7 @@ class SettingsStore(context: Context) {
         set(v) = prefs.edit().putString("proxyAuth", v).apply()
 
     var proxyBindAll: Boolean
-        get() = prefs.getBoolean("proxyBindAll", true)
+        get() = prefs.getBoolean("proxyBindAll", false)
         set(v) = prefs.edit().putBoolean("proxyBindAll", v).apply()
 
     var bypassHosts: String
@@ -90,6 +90,26 @@ class SettingsStore(context: Context) {
     var lastUpdateCheck: Long
         get() = prefs.getLong("lastUpdateCheck", 0L)
         set(v) = prefs.edit().putLong("lastUpdateCheck", v).apply()
+
+    var monitorPort: Int
+        get() = prefs.getInt("monitorPort", 8080)
+        set(v) = prefs.edit().putInt("monitorPort", v).apply()
+
+    var monitorStopWithCapture: Boolean
+        get() = prefs.getBoolean("monitorStopWithCapture", true)
+        set(v) = prefs.edit().putBoolean("monitorStopWithCapture", v).apply()
+
+    var monitorEnabled: Boolean
+        get() = prefs.getBoolean("monitorEnabled", false)
+        set(v) = prefs.edit().putBoolean("monitorEnabled", v).apply()
+
+    var monitorPinHash: String
+        get() = prefs.getString("monitorPinHash", "") ?: ""
+        set(v) = prefs.edit().putString("monitorPinHash", v).apply()
+
+    var monitorPinSalt: String
+        get() = prefs.getString("monitorPinSalt", "") ?: ""
+        set(v) = prefs.edit().putString("monitorPinSalt", v).apply()
 
     var onboardingDone: Boolean
         get() = prefs.getBoolean("onboardingDone", false)
@@ -110,6 +130,10 @@ class SettingsStore(context: Context) {
         "theme" to theme,
         "language" to language,
         "targetApps" to targetApps.toList(),
+        "monitorPort" to monitorPort,
+        "monitorStopWithCapture" to monitorStopWithCapture,
+        "monitorEnabled" to monitorEnabled,
+        "monitorPinSet" to monitorPinHash.isNotEmpty(),
         "captureMode" to captureMode,
         "proxyPort" to proxyPort,
         "proxyAuth" to proxyAuth,
@@ -136,6 +160,8 @@ class SettingsStore(context: Context) {
                 "clearOnStart" -> (v as? Boolean)?.let { clearOnStart = it }
                 "theme" -> (v as? String)?.let { theme = it }
                 "language" -> (v as? String)?.let { language = it }
+                "monitorPort" -> (v as? Number)?.let { monitorPort = it.toInt().coerceIn(1024, 65535) }
+                "monitorStopWithCapture" -> (v as? Boolean)?.let { monitorStopWithCapture = it }
                 "captureMode" -> (v as? String)?.takeIf { it == "vpn" || it == "proxy" }?.let { captureMode = it }
                 "proxyPort" -> (v as? Number)?.let { proxyPort = it.toInt().coerceIn(1024, 65535) }
                 "proxyAuth" -> (v as? String)?.let { proxyAuth = it.trim() }
