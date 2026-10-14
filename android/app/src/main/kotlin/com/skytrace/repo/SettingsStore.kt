@@ -111,6 +111,18 @@ class SettingsStore(context: Context) {
         get() = prefs.getString("monitorPinSalt", "") ?: ""
         set(v) = prefs.edit().putString("monitorPinSalt", v).apply()
 
+    var bubbleEnabled: Boolean
+        get() = prefs.getBoolean("bubbleEnabled", false)
+        set(v) = prefs.edit().putBoolean("bubbleEnabled", v).apply()
+
+    var bubbleX: Int
+        get() = prefs.getInt("bubbleX", -1)
+        set(v) = prefs.edit().putInt("bubbleX", v).apply()
+
+    var bubbleY: Int
+        get() = prefs.getInt("bubbleY", -1)
+        set(v) = prefs.edit().putInt("bubbleY", v).apply()
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean("onboardingDone", false)
         set(v) = prefs.edit().putBoolean("onboardingDone", v).apply()
@@ -134,6 +146,7 @@ class SettingsStore(context: Context) {
         "monitorStopWithCapture" to monitorStopWithCapture,
         "monitorEnabled" to monitorEnabled,
         "monitorPinSet" to monitorPinHash.isNotEmpty(),
+        "bubbleEnabled" to bubbleEnabled,
         "captureMode" to captureMode,
         "proxyPort" to proxyPort,
         "proxyAuth" to proxyAuth,
@@ -162,6 +175,7 @@ class SettingsStore(context: Context) {
                 "language" -> (v as? String)?.let { language = it }
                 "monitorPort" -> (v as? Number)?.let { monitorPort = it.toInt().coerceIn(1024, 65535) }
                 "monitorStopWithCapture" -> (v as? Boolean)?.let { monitorStopWithCapture = it }
+                "bubbleEnabled" -> (v as? Boolean)?.let { bubbleEnabled = it }
                 "captureMode" -> (v as? String)?.takeIf { it == "vpn" || it == "proxy" }?.let { captureMode = it }
                 "proxyPort" -> (v as? Number)?.let { proxyPort = it.toInt().coerceIn(1024, 65535) }
                 "proxyAuth" -> (v as? String)?.let { proxyAuth = it.trim() }
