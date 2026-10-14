@@ -111,7 +111,7 @@ class LocalProxyEngine(
             val sni = TlsInterceptor.parseSni(first)
             val hostKey = sni ?: label
             if (!Graph.settings.tlsInterception || bypass.contains(hostKey) || userBypass(hostKey)) {
-                tunnel(PrefixedTransport(first, session), session.dstIp, session.dstPort, hostKey, "tls", app)
+                tunnel(PrefixedTransport(first, session), session.dstIp, session.dstPort, hostKey, "tls", app, bypassReason(hostKey))
                 return
             }
             val result = try {
@@ -150,6 +150,12 @@ class LocalProxyEngine(
             bypassRaw = raw
         }
         return bypassRegexes.any { it.containsMatchIn(host) }
+    }
+
+    private fun bypassReason(hostKey: String): String = when {
+        !Graph.settings.tlsInterception -> "tls-off"
+        userBypass(hostKey) -> "bypass-user"
+        else -> "bypass-auto"
     }
 
     private fun proxyAuthorized(headers: List<Header>): Boolean {
@@ -210,7 +216,7 @@ class LocalProxyEngine(
             val sni = TlsInterceptor.parseSni(first)
             val hostKey = sni ?: host
             if (!Graph.settings.tlsInterception || bypass.contains(hostKey) || userBypass(hostKey)) {
-                tunnel(PrefixedTransport(first, transport), null, port, hostKey, "tls", app)
+                tunnel(PrefixedTransport(first, transport), null, port, hostKey, "tls", app, bypassReason(hostKey))
                 return
             }
             val result = try {
@@ -258,7 +264,8 @@ class LocalProxyEngine(
         dstPort: Int,
         host: String,
         scheme: String,
-        app: AppIdentity
+        app: AppIdentity,
+        reason: String = ""
     ) {
         val started = System.nanoTime()
         val entity = TrafficEntity(
@@ -272,6 +279,7 @@ class LocalProxyEngine(
             appName = app.label,
             uid = app.uid,
             remoteIp = dstIp?.toIpString() ?: "",
+            statusMessage = reason,
             tunnel = true
         )
         entity.id = Graph.repository.create(entity, Graph.settings.maxEntries)
