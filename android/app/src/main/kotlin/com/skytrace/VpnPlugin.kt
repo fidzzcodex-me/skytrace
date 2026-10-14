@@ -23,6 +23,9 @@ import com.skytrace.rule.BreakpointEdit
 import com.skytrace.rule.PendingBreakpoint
 import com.skytrace.util.EventBus
 import com.skytrace.util.Logger
+import com.skytrace.monitor.MonitorAuth
+import com.skytrace.monitor.MonitorManager
+import com.skytrace.vpn.LiveStats
 import com.skytrace.vpn.VpnServiceManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -43,6 +46,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import java.io.ByteArrayOutputStream
 
@@ -184,7 +189,9 @@ class VpnPlugin :
                 val info = appContext.packageManager.getPackageInfo(appContext.packageName, 0)
                 mapOf(
                     "versionName" to (info.versionName ?: "0.0.0"),
-                    "packageName" to appContext.packageName
+                    "packageName" to appContext.packageName,
+                    "batteryExempt" to (appContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager)
+                        .isIgnoringBatteryOptimizations(appContext.packageName)
                 )
             }
             "openUrl" -> {
@@ -202,6 +209,66 @@ class VpnPlugin :
                 } else {
                     result.success(false)
                 }
+            }
+            "trafficDeleteFiltered" -> io(result) {
+                Graph.repository.deleteFiltered(TrafficFilter.fromMap(call.argument<Map<String, Any?>>("filter")))
+            }
+            "monitorStatus" -> io(result) { MonitorManager.statusMap() }
+            "monitorStart" -> {
+                if (Graph.settings.monitorPinHash.isEmpty()) {
+                    result.error("pin_not_set", "Set a PIN first", null)
+                } else {
+                    MonitorManager.start(appContext)
+                    result.success(true)
+                }
+            }
+            "monitorStop" -> {
+                MonitorManager.stop(appContext)
+                result.success(true)
+            }
+            "monitorSetPin" -> io(result) {
+                val requested = call.argument<String>("pin")
+                val pin = if (requested.isNullOrBlank()) MonitorAuth.randomPin() else requested
+                if (!MonitorAuth.isValidPin(pin)) throw IllegalArgumentException("PIN must be 4 to 6 digits")
+                val salt = MonitorAuth.newSalt()
+                Graph.settings.monitorPinSalt = salt
+                Graph.settings.monitorPinHash = MonitorAuth.hash(salt, pin)
+                MonitorManager.server?.invalidateSessions()
+                pin
+            }
+            "setPaused" -> {
+                LiveStats.paused = call.argument<Boolean>("paused") ?: false
+                VpnServiceManager.emitStats()
+                result.success(LiveStats.paused)
+            }
+            "rulesExport" -> io(result) {
+                val rules = Graph.repository.listRules().map { Graph.repository.ruleToJson(it) }
+                val bps = Graph.repository.listBreakpoints().map { Graph.repository.breakpointToJson(it) }
+                val obj = buildJsonObject {
+                    put("version", 1)
+                    put("rules", JsonArray(rules))
+                    put("breakpoints", JsonArray(bps))
+                }
+                Graph.repository.writeExport(appContext, "skytrace-rules-${System.currentTimeMillis()}.json", obj.toString()).absolutePath
+            }
+            "rulesImport" -> io(result) {
+                val root = json.parseToJsonElement(call.argument<String>("json") ?: "{}").jsonObject
+                var count = 0
+                root["rules"]?.jsonArray?.forEach {
+                    Graph.repository.saveRule(Graph.repository.parseRule(it.toString()).copy(id = 0))
+                    count++
+                }
+                root["breakpoints"]?.jsonArray?.forEach {
+                    Graph.repository.saveBreakpoint(Graph.repository.parseBreakpoint(it.toString()).copy(id = 0))
+                    count++
+                }
+                Graph.reloadRules()
+                count
+            }
+            "diagnostics" -> io(result) { runDiagnostics() }
+            "openSettings" -> {
+                openSettingsTarget(call.argument<String>("target") ?: "")
+                result.success(true)
             }
             "vpnStop" -> {
                 VpnServiceManager.stop(appContext)
@@ -366,6 +433,73 @@ class VpnPlugin :
             "appIcon" -> io(result) { loadIcon(call.argument<String>("package") ?: "") }
             "logs" -> io(result) { Logger.recent() }
             else -> result.notImplemented()
+        }
+    }
+
+    private fun runDiagnostics(): List<Map<String, String>> {
+        val out = mutableListOf<Map<String, String>>()
+        fun add(id: String, level: String, value: String) {
+            out.add(mapOf("id" to id, "level" to level, "value" to value))
+        }
+
+        val cert = Graph.certs.status()
+        when {
+            cert["generated"] != true -> add("ca", "error", "missing")
+            cert["installed"] != true -> add("ca", "warn", "notinstalled")
+            else -> add("ca", "ok", "ok")
+        }
+
+        val mode = try {
+            android.provider.Settings.Global.getString(appContext.contentResolver, "private_dns_mode") ?: "off"
+        } catch (e: Exception) {
+            "unknown"
+        }
+        add("privatedns", if (mode == "hostname" || mode == "opportunistic") "info" else "ok", mode)
+
+        val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+        val otherVpn = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) == true && !VpnServiceManager.isRunning()
+        add("othervpn", if (otherVpn) "warn" else "ok", if (otherVpn) "active" else "none")
+
+        val pm = appContext.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val ignoring = pm.isIgnoringBatteryOptimizations(appContext.packageName)
+        add("battery", if (ignoring) "ok" else "warn", if (ignoring) "ok" else "restricted")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            add("notifications", if (granted) "ok" else "warn", if (granted) "ok" else "denied")
+        }
+
+        val reachable = try {
+            java.net.Socket().use {
+                it.connect(java.net.InetSocketAddress("1.1.1.1", 443), 3000)
+            }
+            true
+        } catch (e: Exception) {
+            false
+        }
+        add("internet", if (reachable) "ok" else "error", if (reachable) "ok" else "fail")
+
+        add("mode", "info", Graph.settings.captureMode)
+        add("sdk", "info", Build.VERSION.SDK_INT.toString())
+        return out
+    }
+
+    private fun openSettingsTarget(target: String) {
+        val intent = when (target) {
+            "battery" -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            "vpn" -> Intent(Settings.ACTION_VPN_SETTINGS)
+            "network" -> Intent(Settings.ACTION_WIRELESS_SETTINGS)
+            "app" -> Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${appContext.packageName}"))
+            else -> Intent(Settings.ACTION_SETTINGS)
+        }
+        val host = activity
+        if (host != null) {
+            host.startActivity(intent)
+        } else {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            appContext.startActivity(intent)
         }
     }
 
