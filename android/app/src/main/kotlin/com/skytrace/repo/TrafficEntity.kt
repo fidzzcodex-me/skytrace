@@ -76,6 +76,7 @@ class TrafficSummary(
     val modified: Boolean,
     val isWebSocket: Boolean,
     val tunnel: Boolean,
+    val statusMessage: String,
     val error: String?
 )
 
@@ -145,6 +146,9 @@ interface TrafficDao {
 
     @RawQuery
     suspend fun entities(query: SupportSQLiteQuery): List<TrafficEntity>
+
+    @RawQuery
+    suspend fun countRaw(query: SupportSQLiteQuery): Int
 
     @Query("SELECT appPackage, appName, COUNT(*) AS requests FROM traffic GROUP BY appPackage ORDER BY requests DESC")
     suspend fun appFacets(): List<AppFacet>
