@@ -62,6 +62,43 @@ class TrafficRepository {
 
   Future<Uint8List?> appIcon(String package) => _api.invoke<Uint8List>('appIcon', {'package': package});
 
+  Future<int> deleteFiltered(TrafficFilter filter) async =>
+      (await _api.invoke<int>('trafficDeleteFiltered', {'filter': filter.toMap()})) ?? 0;
+
+  Future<MonitorStatus> monitorStatus() async {
+    final map = await _api.invoke<Map<dynamic, dynamic>>('monitorStatus');
+    return MonitorStatus.fromMap(map ?? const {});
+  }
+
+  Future<void> monitorStart() async {
+    await _api.invoke<bool>('monitorStart');
+  }
+
+  Future<void> monitorStop() async {
+    await _api.invoke<bool>('monitorStop');
+  }
+
+  Future<String> monitorSetPin({String? pin}) async =>
+      (await _api.invoke<String>('monitorSetPin', {'pin': pin})) ?? '';
+
+  Future<bool> batteryExempt() async {
+    final map = await _api.invoke<Map<dynamic, dynamic>>('appInfo');
+    return ((map ?? const {})['batteryExempt'] ?? true) as bool;
+  }
+
+  Future<String?> exportRules() => _api.invoke<String>('rulesExport');
+
+  Future<int> importRules(String json) async => (await _api.invoke<int>('rulesImport', {'json': json})) ?? 0;
+
+  Future<List<DiagnosticItem>> diagnostics() async {
+    final raw = await _api.invoke<List<dynamic>>('diagnostics');
+    return (raw ?? const []).map((e) => DiagnosticItem.fromMap(e as Map<dynamic, dynamic>)).toList();
+  }
+
+  Future<void> openSettings(String target) async {
+    await _api.invoke<bool>('openSettings', {'target': target});
+  }
+
   Future<ProxyInfo> proxyInfo() async {
     final map = await _api.invoke<Map<dynamic, dynamic>>('proxyInfo');
     return ProxyInfo.fromMap(map ?? const {});
