@@ -17,6 +17,7 @@ import '../theme/colors.dart';
 import '../theme/component_styles.dart';
 import '../theme/text_styles.dart';
 import '../utils/format.dart';
+import '../utils/snippets.dart';
 import '../utils/strings.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/body_viewer.dart';
@@ -177,12 +178,24 @@ class _TrafficDetailScreenState extends ConsumerState<TrafficDetailScreen> {
                         await export.exportAndShare(ExportFormat.raw, ids: [d.id]);
                       case 'curlfile':
                         await export.exportAndShare(ExportFormat.curl, ids: [d.id]);
+                      case 'py':
+                        await _copy(Snippets.python(d));
+                      case 'fetch':
+                        await _copy(Snippets.fetch(d));
+                      case 'okhttp':
+                        await _copy(Snippets.okhttp(d));
+                      case 'httpie':
+                        await _copy(Snippets.httpie(d));
                     }
                   },
                   itemBuilder: (_) => [
                     if (canReplay) PopupMenuItem(value: 'edit', child: Text(t.t('replay_edit'))),
                     PopupMenuItem(value: 'curl', child: Text(t.t('copy_curl'))),
                     PopupMenuItem(value: 'url', child: Text(t.t('copy_url'))),
+                    if (!d.tunnel) PopupMenuItem(value: 'py', child: Text(t.t('snip_python'))),
+                    if (!d.tunnel) PopupMenuItem(value: 'fetch', child: Text(t.t('snip_fetch'))),
+                    if (!d.tunnel) PopupMenuItem(value: 'okhttp', child: Text(t.t('snip_okhttp'))),
+                    if (!d.tunnel) PopupMenuItem(value: 'httpie', child: Text(t.t('snip_httpie'))),
                     PopupMenuItem(value: 'har', child: Text('${t.t('export')} ${t.t('export_har')}')),
                     PopupMenuItem(value: 'curlfile', child: Text('${t.t('export')} ${t.t('export_curl')}')),
                     PopupMenuItem(value: 'raw', child: Text('${t.t('export')} ${t.t('export_raw')}')),
@@ -349,14 +362,39 @@ class _OverviewTab extends StatelessWidget {
             ],
           ),
         ).fadeInUp(),
+        if (d.possiblePinning) ...[
+          const SizedBox(height: AppSpacing.cardGap),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.page),
+            decoration: BoxDecoration(
+              color: AppColors.warningAmber.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.warningAmber.withValues(alpha: 0.45)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const FaIcon(FontAwesomeIcons.lock, size: 15, color: AppColors.warningAmber),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(t.t('pin_title'), style: AppText.heading(p))),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(t.t('pin_body'), style: AppText.caption(p).copyWith(fontSize: 12.5)),
+              ],
+            ),
+          ).fadeInUp(index: 1),
+        ],
         if (d.error != null) ...[
           const SizedBox(height: AppSpacing.cardGap),
           Container(
             padding: const EdgeInsets.all(AppSpacing.page),
             decoration: BoxDecoration(
-              color: AppColors.errorRed.withOpacity(0.08),
+              color: AppColors.errorRed.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(AppRadius.card),
-              border: Border.all(color: AppColors.errorRed.withOpacity(0.3)),
+              border: Border.all(color: AppColors.errorRed.withValues(alpha: 0.3)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,7 +499,7 @@ class _TimingTab extends StatelessWidget {
                                   children: [
                                     Container(
                                       decoration: BoxDecoration(
-                                        color: p.surfaceAlt.withOpacity(0.6),
+                                        color: p.surfaceAlt.withValues(alpha: 0.6),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                     ),
