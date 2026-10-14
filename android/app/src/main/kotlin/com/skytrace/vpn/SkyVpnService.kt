@@ -76,6 +76,7 @@ class SkyVpnService : VpnService() {
                 serviceScope.launch { Graph.repository.clear() }
             }
             LiveStats.reset()
+            LiveStats.paused = false
             Graph.certs.ensureCa()
             Graph.reloadRules()
 
@@ -137,6 +138,7 @@ class SkyVpnService : VpnService() {
         VpnServiceManager.setState(VpnState.STOPPING)
         cleanup()
         VpnServiceManager.setState(VpnState.STOPPED)
+        com.skytrace.monitor.MonitorManager.onCaptureStopped(applicationContext)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
