@@ -79,7 +79,7 @@ class ReplayClient(
             appName = "SkyTrace Replay",
             replayOf = id
         )
-        val newId = repository.create(entity, settings.maxEntries)
+        val newId = repository.create(entity, settings.maxEntries, force = true)
         val started = System.nanoTime()
         try {
             val response = withContext(Dispatchers.IO) { client.newCall(builder.build()).execute() }
