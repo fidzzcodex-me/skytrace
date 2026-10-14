@@ -49,6 +49,9 @@ class TcpSession(
     private var synAckRetries = 0
     private var synAckSentAt = 0L
 
+    private val queued = java.util.concurrent.atomic.AtomicInteger(0)
+    private var lastAdvertised = WINDOW
+
     val input = Channel<ByteArray>(Channel.UNLIMITED)
     private val windowSignal = Channel<Unit>(Channel.CONFLATED)
 
@@ -105,6 +108,7 @@ class TcpSession(
                 }
                 if (payload.isNotEmpty()) {
                     if (seq == rcvNxt) {
+                        queued.addAndGet(payload.size)
                         input.trySend(payload)
                         rcvNxt = (rcvNxt + payload.size) and 0xFFFFFFFFL
                         dataLen = payload.size
@@ -129,7 +133,14 @@ class TcpSession(
         }
     }
 
-    override suspend fun read(): ByteArray? = input.receiveCatching().getOrNull()
+    override suspend fun read(): ByteArray? {
+        val data = input.receiveCatching().getOrNull() ?: return null
+        queued.addAndGet(-data.size)
+        synchronized(lock) {
+            if (state != State.CLOSED && lastAdvertised < MSS * 2 && currentWindow() >= MSS * 4) sendAck()
+        }
+        return data
+    }
 
     override suspend fun write(data: ByteArray) {
         if (data.isEmpty()) return
@@ -204,12 +215,20 @@ class TcpSession(
         )
     }
 
+    private fun currentWindow(): Int = (WINDOW - queued.get()).coerceIn(0, WINDOW)
+
+    private fun advertise(): Int {
+        val w = currentWindow()
+        lastAdvertised = w
+        return w
+    }
+
     private fun sendAck() {
-        tun.write(PacketBuilder.tcp(dstIp, srcIp, dstPort, srcPort, sndNxt, rcvNxt, TcpFlags.ACK, WINDOW, ByteArray(0)))
+        tun.write(PacketBuilder.tcp(dstIp, srcIp, dstPort, srcPort, sndNxt, rcvNxt, TcpFlags.ACK, advertise(), ByteArray(0)))
     }
 
     private fun emit(seq: Long, data: ByteArray, flags: Int) {
-        tun.write(PacketBuilder.tcp(dstIp, srcIp, dstPort, srcPort, seq, rcvNxt, flags, WINDOW, data))
+        tun.write(PacketBuilder.tcp(dstIp, srcIp, dstPort, srcPort, seq, rcvNxt, flags, advertise(), data))
     }
 
     private fun processAck(ack: Long, window: Int) {
