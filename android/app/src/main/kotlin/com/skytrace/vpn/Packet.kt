@@ -107,12 +107,9 @@ class UdpDatagram private constructor(
 }
 
 object PacketBuilder {
-    private var identification = 0
+    private val identification = java.util.concurrent.atomic.AtomicInteger(0)
 
-    private fun nextId(): Int {
-        identification = (identification + 1) and 0xFFFF
-        return identification
-    }
+    private fun nextId(): Int = identification.incrementAndGet() and 0xFFFF
 
     fun tcp(
         srcIp: ByteArray,
