@@ -16,6 +16,7 @@ class TrafficState {
     this.loading = true,
     this.loadingMore = false,
     this.hasMore = true,
+    this.held = 0,
     this.error,
   });
 
@@ -24,6 +25,7 @@ class TrafficState {
   final bool loading;
   final bool loadingMore;
   final bool hasMore;
+  final int held;
   final String? error;
 
   TrafficState copyWith({
@@ -32,6 +34,7 @@ class TrafficState {
     bool? loading,
     bool? loadingMore,
     bool? hasMore,
+    int? held,
     Object? error = _keep,
   }) {
     return TrafficState(
@@ -40,6 +43,7 @@ class TrafficState {
       loading: loading ?? this.loading,
       loadingMore: loadingMore ?? this.loadingMore,
       hasMore: hasMore ?? this.hasMore,
+      held: held ?? this.held,
       error: identical(error, _keep) ? this.error : error as String?,
     );
   }
@@ -61,8 +65,40 @@ class TrafficController extends StateNotifier<TrafficState> {
   Timer? _flush;
   final Map<int, TrafficSummary> _incoming = {};
   int _generation = 0;
+  bool _frozen = false;
+  final Set<int> _heldIds = {};
+
+  void setFrozen(bool value) {
+    if (_frozen == value) return;
+    _frozen = value;
+    if (!value && _heldIds.isNotEmpty) {
+      _heldIds.clear();
+      state = state.copyWith(held: 0);
+      load();
+    }
+  }
+
+  Future<void> deleteItem(int id) async {
+    state = state.copyWith(items: state.items.where((e) => e.id != id).toList());
+    await _repo.delete([id]);
+  }
+
+  Future<void> deleteFiltered() async {
+    await _repo.deleteFiltered(state.filter);
+    await load();
+  }
 
   void _onEvent(AppEvent event) {
+    if (event.type == 'traffic_deleted') {
+      final ids = event.data['ids'];
+      if (ids is List) {
+        final gone = ids.map((e) => (e as num).toInt()).toSet();
+        state = state.copyWith(items: state.items.where((e) => !gone.contains(e.id)).toList());
+      } else {
+        load();
+      }
+      return;
+    }
     if (event.type == 'traffic_new' || event.type == 'traffic_update') {
       final summary = TrafficSummary.fromJson(event.data);
       _incoming[summary.id] = summary;
@@ -85,10 +121,14 @@ class TrafficController extends StateNotifier<TrafficState> {
           list.removeAt(index);
         }
       } else if (item.matches(state.filter)) {
-        list.insert(0, item);
+        if (_frozen) {
+          _heldIds.add(item.id);
+        } else {
+          list.insert(0, item);
+        }
       }
     }
-    state = state.copyWith(items: list, loading: false);
+    state = state.copyWith(items: list, loading: false, held: _heldIds.length);
   }
 
   Future<void> load() async {
@@ -124,14 +164,16 @@ class TrafficController extends StateNotifier<TrafficState> {
   }
 
   Future<void> setFilter(TrafficFilter filter) async {
-    state = state.copyWith(filter: filter, items: const [], loading: true, hasMore: true);
+    _heldIds.clear();
+    state = state.copyWith(filter: filter, items: const [], loading: true, hasMore: true, held: 0);
     await load();
   }
 
   Future<void> clearAll() async {
     await _repo.clear();
     _incoming.clear();
-    state = state.copyWith(items: const [], hasMore: false, loading: false);
+    _heldIds.clear();
+    state = state.copyWith(items: const [], hasMore: false, loading: false, held: 0);
   }
 
   @override
@@ -145,6 +187,12 @@ class TrafficController extends StateNotifier<TrafficState> {
 final trafficProvider = StateNotifierProvider<TrafficController, TrafficState>(
   (ref) => TrafficController(ref.watch(trafficRepositoryProvider), ref.watch(apiProvider)),
 );
+
+final batteryExemptProvider = FutureProvider.autoDispose<bool>(
+  (ref) => ref.watch(trafficRepositoryProvider).batteryExempt(),
+);
+
+final batteryBannerDismissedProvider = StateProvider<bool>((ref) => false);
 
 final facetsProvider = FutureProvider.autoDispose<Facets>(
   (ref) => ref.watch(trafficRepositoryProvider).facets(),
