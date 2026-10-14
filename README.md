@@ -113,6 +113,17 @@ Keamanan:
 - Semua perubahan data butuh header khusus dan cookie SameSite untuk mencegah CSRF
 - Koneksi memakai HTTP biasa (tidak dienkripsi). Siapa pun di WiFi yang sama dan bisa menyadap lalu lintas dapat melihat PIN. Jangan pakai di WiFi publik
 
+## Bubble mengambang
+
+Saat capture aktif, SkyTrace bisa menampilkan bubble kecil di atas aplikasi lain supaya kamu tahu capture masih berjalan.
+
+- Aktifkan di Setelan, bagian Bubble mengambang. Default mati
+- Status ditampilkan jelas: Didukung, Perlu izin (ada tombol ke Settings), atau Bubble tidak didukung di perangkat ini (toggle dinonaktifkan)
+- Geser untuk memindahkan (posisi tersimpan), ketuk untuk panel mini, tekan lama atau tarik ke tanda X untuk menyembunyikan sampai capture berikutnya
+- Bubble hanya berisi ikon dan jumlah request baru. Tidak pernah menampilkan URL atau isi traffic
+- Di Xiaomi, Oppo, Vivo, Huawei, dan beberapa merek lain, aktifkan juga izin tambahan seperti "Tampilkan jendela pop-up saat berjalan di latar belakang"
+- Badge diperbarui paling cepat tiap 2 detik dan melambat saat layar mati, supaya hemat baterai
+
 ## Popup update
 
 SkyTrace memeriksa rilis terbaru di GitHub setiap 12 jam. Yang dibaca adalah release resmi bertag (misalnya `v1.1.0`), bukan release "latest build" otomatis. Bila versi di GitHub lebih tinggi dari versi terpasang, muncul popup berisi catatan rilis dengan tombol Unduh, Nanti, dan Lewati versi ini. Alamat repo diatur di `lib/utils/app_config.dart`.
