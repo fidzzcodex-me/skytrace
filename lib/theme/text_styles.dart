@@ -1,3 +1,5 @@
+import 'dart:ui' show FontFeature;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -25,7 +27,15 @@ class AppText {
   }
 
   static TextStyle display(AppPalette p) =>
-      _base(size: 28, weight: FontWeight.w700, color: p.textPrimary, height: 1.2);
+      _base(size: 32, weight: FontWeight.w700, color: p.textPrimary, height: 1.15, letterSpacing: -0.4);
+
+  static TextStyle numeric(AppPalette p, {double size = 48}) => _base(
+        size: size,
+        weight: FontWeight.w700,
+        color: p.textPrimary,
+        height: 1,
+        letterSpacing: -1,
+      ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
 
   static TextStyle title(AppPalette p) =>
       _base(size: 20, weight: FontWeight.w700, color: p.textPrimary, height: 1.25);
