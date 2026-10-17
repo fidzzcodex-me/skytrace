@@ -115,6 +115,26 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean("bubbleEnabled", false)
         set(v) = prefs.edit().putBoolean("bubbleEnabled", v).apply()
 
+    var bubbleWindow: Boolean
+        get() = prefs.getBoolean("bubbleWindow", false)
+        set(v) = prefs.edit().putBoolean("bubbleWindow", v).apply()
+
+    var windowX: Int
+        get() = prefs.getInt("windowX", -1)
+        set(v) = prefs.edit().putInt("windowX", v).apply()
+
+    var windowY: Int
+        get() = prefs.getInt("windowY", -1)
+        set(v) = prefs.edit().putInt("windowY", v).apply()
+
+    var windowW: Int
+        get() = prefs.getInt("windowW", -1)
+        set(v) = prefs.edit().putInt("windowW", v).apply()
+
+    var windowH: Int
+        get() = prefs.getInt("windowH", -1)
+        set(v) = prefs.edit().putInt("windowH", v).apply()
+
     var bubbleX: Int
         get() = prefs.getInt("bubbleX", -1)
         set(v) = prefs.edit().putInt("bubbleX", v).apply()
@@ -147,6 +167,7 @@ class SettingsStore(context: Context) {
         "monitorEnabled" to monitorEnabled,
         "monitorPinSet" to monitorPinHash.isNotEmpty(),
         "bubbleEnabled" to bubbleEnabled,
+        "bubbleWindow" to bubbleWindow,
         "captureMode" to captureMode,
         "proxyPort" to proxyPort,
         "proxyAuth" to proxyAuth,
@@ -175,6 +196,7 @@ class SettingsStore(context: Context) {
                 "language" -> (v as? String)?.let { language = it }
                 "monitorPort" -> (v as? Number)?.let { monitorPort = it.toInt().coerceIn(1024, 65535) }
                 "monitorStopWithCapture" -> (v as? Boolean)?.let { monitorStopWithCapture = it }
+                "bubbleWindow" -> (v as? Boolean)?.let { bubbleWindow = it }
                 "bubbleEnabled" -> (v as? Boolean)?.let { bubbleEnabled = it }
                 "captureMode" -> (v as? String)?.takeIf { it == "vpn" || it == "proxy" }?.let { captureMode = it }
                 "proxyPort" -> (v as? Number)?.let { proxyPort = it.toInt().coerceIn(1024, 65535) }
