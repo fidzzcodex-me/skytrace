@@ -27,6 +27,20 @@ class BubbleGeometryTest {
     }
 
     @Test
+    fun rectClampKeepsWindowOnScreen() {
+        assertEquals(Pair(0, 0), BubbleGeometry.clampRect(-20, -5, 900, 1200, 1080, 2400))
+        assertEquals(Pair(180, 1200), BubbleGeometry.clampRect(500, 2000, 900, 1200, 1080, 2400))
+        assertEquals(Pair(100, 100), BubbleGeometry.clampRect(100, 100, 900, 1200, 1080, 2400))
+    }
+
+    @Test
+    fun sizeClampHonoursMinimumAndMaximum() {
+        assertEquals(840, BubbleGeometry.clampSize(100, 840, 1080))
+        assertEquals(1080, BubbleGeometry.clampSize(5000, 840, 1080))
+        assertEquals(900, BubbleGeometry.clampSize(900, 840, 1080))
+    }
+
+    @Test
     fun badgeCapsAtNinetyNinePlus() {
         assertEquals("7", BubbleGeometry.badgeText(7))
         assertEquals("99", BubbleGeometry.badgeText(99))
