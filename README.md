@@ -120,7 +120,8 @@ Saat capture aktif, SkyTrace bisa menampilkan bubble kecil di atas aplikasi lain
 - Aktifkan di Setelan, bagian Bubble mengambang. Default mati
 - Status ditampilkan jelas: Didukung, Perlu izin (ada tombol ke Settings), atau Bubble tidak didukung di perangkat ini (toggle dinonaktifkan)
 - Geser untuk memindahkan (posisi tersimpan), ketuk untuk panel mini, tekan lama atau tarik ke tanda X untuk menyembunyikan sampai capture berikutnya
-- Bubble hanya berisi ikon dan jumlah request baru. Tidak pernah menampilkan URL atau isi traffic
+- Secara default bubble hanya berisi ikon dan jumlah request baru, tanpa URL atau isi traffic
+- Opsi jendela mengambang (default mati): ketuk bubble untuk membuka seluruh aplikasi dalam jendela yang bisa dipindah dan diubah ukurannya, lengkap dengan daftar traffic live dan detail. Jendela ini menampilkan URL dan isi traffic, jadi nyalakan hanya di perangkat yang kamu percaya. Jendela memakai mesin Flutter kedua yang hanya hidup selama jendela terbuka
 - Di Xiaomi, Oppo, Vivo, Huawei, dan beberapa merek lain, aktifkan juga izin tambahan seperti "Tampilkan jendela pop-up saat berjalan di latar belakang"
 - Badge diperbarui paling cepat tiap 2 detik dan melambat saat layar mati, supaya hemat baterai
 
@@ -253,6 +254,7 @@ curl -X POST 'https://api.example.com/v1/login' \
 | Tidak ada traffic sama sekali | VPN lain aktif, atau service dihentikan sistem | Buka Setelan, Diagnostik, lalu ikuti item yang berwarna kuning atau merah |
 | Tombol start gagal | Izin VPN ditolak | Ketuk lagi dan setujui dialog VPN |
 | Lencana "Possible pinning" muncul | Aplikasi menolak sertifikat SkyTrace | Ikuti saran di halaman detail: pasang CA, tambahkan debug-overrides, nonaktifkan pinning pada build debug |
+| Izin overlay ditolak dengan pesan "Aplikasi tidak diberi akses" | Setelan terbatas Android 13 ke atas untuk APK yang dipasang langsung | Info aplikasi SkyTrace, titik tiga, Izinkan setelan terbatas, lalu beri izin lagi |
 | Capture mati sendiri di latar belakang | Penghemat baterai sistem | Ikuti panduan di Beranda: Setelan, Aplikasi, SkyTrace, Baterai, Tanpa batasan |
 | Live Monitor tidak bisa dibuka dari PC | PC dan HP beda jaringan, atau port dipakai | Pastikan satu WiFi, cek status di aplikasi, dan ganti port bila perlu |
 | Aplikasi gRPC atau HTTP/2 only gagal | Mesin memakai HTTP/1.1 | Gunakan mode TUNNEL untuk host itu atau matikan Intercept TLS di setelan |
