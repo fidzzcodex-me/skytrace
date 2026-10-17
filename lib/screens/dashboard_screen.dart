@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -12,6 +13,7 @@ import '../providers/update_provider.dart';
 import '../providers/vpn_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
+import '../theme/sky.dart';
 import '../theme/component_styles.dart';
 import '../theme/text_styles.dart';
 import '../utils/format.dart';
@@ -21,7 +23,6 @@ import '../widgets/request_tile.dart';
 import '../widgets/section_header.dart';
 import '../widgets/sky_button.dart';
 import '../widgets/stat_tile.dart';
-import '../widgets/trace_arc.dart';
 import 'breakpoint_screen.dart';
 import 'certificate_screen.dart';
 import 'monitor_screen.dart';
@@ -116,79 +117,52 @@ class DashboardScreen extends ConsumerWidget {
           ).fadeInUp(),
           const SizedBox(height: AppSpacing.cardGap),
         ],
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.card + 4),
-            gradient: AppComponents.skyBackground(p),
-            boxShadow: AppComponents.cardShadow(p),
-            border: Border.all(color: p.surfaceAlt),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            children: [
-              const Positioned(right: -50, top: -30, child: TraceArc(size: 240, opacity: 0.3)),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.page + 4),
-                child: Column(
+        SkyScene(
+          mood: _moodFor(vpn),
+          borderRadius: BorderRadius.circular(AppRadius.card + 8),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.card + 8),
+              border: Border.all(color: p.border),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    GestureDetector(
-                      onTap: toggle,
-                      child: AnimatedContainer(
-                        duration: AppMotion.base,
-                        curve: AppMotion.curve,
-                        width: 112,
-                        height: 112,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: running
-                              ? const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [AppColors.accentBlue, AppColors.primaryBlue],
-                                )
-                              : null,
-                          color: running ? null : p.surface,
-                          border: Border.all(color: AppColors.primaryBlue.withValues(alpha: running ? 0 : 0.4), width: 2),
-                          boxShadow: AppComponents.softShadow(p),
-                        ),
-                        alignment: Alignment.center,
-                        child: vpn.isBusy
-                            ? const SizedBox(
-                                width: 34,
-                                height: 34,
-                                child: CircularProgressIndicator(strokeWidth: 3, color: AppColors.primaryBlue),
-                              )
-                            : FaIcon(
-                                FontAwesomeIcons.powerOff,
-                                size: 40,
-                                color: running ? AppColors.cloudWhite : AppColors.primaryBlue,
-                              ),
-                      ),
+                    _StatePill(
+                      label: running && vpn.paused ? t.t('rec_paused') : _phaseText(vpn.phase, t),
+                      color: _pillColor(vpn),
+                      active: running && !vpn.paused,
                     ),
-                    const SizedBox(height: 16),
-                    AnimatedSwitcher(
-                      duration: AppMotion.fast,
-                      child: Text(
-                        _phaseText(vpn.phase, t),
-                        key: ValueKey(vpn.phase),
-                        style: AppText.heading(p),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      vpn.phase == VpnPhase.error && vpn.error.isNotEmpty
-                          ? vpn.error
-                          : running
-                              ? '${vpn.connections} ${t.t('connections').toLowerCase()}'
-                              : t.t('vpn_start'),
-                      style: AppText.caption(p),
-                      textAlign: TextAlign.center,
+                    const Spacer(),
+                    _HeroChip(
+                      icon: mode == 'proxy' ? FontAwesomeIcons.globe : FontAwesomeIcons.shieldHalved,
+                      label: mode == 'proxy' ? t.t('mode_proxy') : t.t('mode_vpn'),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 22),
+                Text('${vpn.requests}', style: AppText.numeric(p)),
+                const SizedBox(height: 6),
+                Text(t.t('requests'), style: AppText.caption(p).copyWith(fontSize: 13, color: p.textPrimary, fontWeight: FontWeight.w500)),
+                if (vpn.phase == VpnPhase.error && vpn.error.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(vpn.error, style: AppText.caption(p).copyWith(color: AppColors.errorRed, fontWeight: FontWeight.w600)),
+                ],
+                const SizedBox(height: 20),
+                SkyButton(
+                  label: running ? t.t('vpn_stop') : t.t('vpn_start'),
+                  expand: true,
+                  loading: vpn.isBusy,
+                  secondary: running,
+                  danger: running,
+                  icon: const FaIcon(FontAwesomeIcons.powerOff),
+                  onPressed: toggle,
+                ),
+              ],
+            ),
           ),
         ).fadeInUp(),
         const SizedBox(height: AppSpacing.cardGap),
@@ -231,30 +205,12 @@ class DashboardScreen extends ConsumerWidget {
         Row(
           children: [
             Expanded(
-              child: StatTile(icon: FontAwesomeIcons.paperPlane, label: t.t('requests'), value: '${vpn.requests}')
-                  .fadeInUp(index: 1),
-            ),
-            const SizedBox(width: AppSpacing.cardGap),
-            Expanded(
-              child: StatTile(
-                icon: FontAwesomeIcons.bolt,
-                label: t.t('connections'),
-                value: '${vpn.connections}',
-                color: AppColors.warningAmber,
-              ).fadeInUp(index: 2),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.cardGap),
-        Row(
-          children: [
-            Expanded(
               child: StatTile(
                 icon: FontAwesomeIcons.arrowUp,
                 label: t.t('upload'),
                 value: Fmt.bytes(vpn.up),
                 color: AppColors.successGreen,
-              ).fadeInUp(index: 3),
+              ).fadeInUp(index: 2),
             ),
             const SizedBox(width: AppSpacing.cardGap),
             Expanded(
@@ -263,7 +219,28 @@ class DashboardScreen extends ConsumerWidget {
                 label: t.t('download'),
                 value: Fmt.bytes(vpn.down),
                 color: AppColors.deepBlue,
+              ).fadeInUp(index: 3),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.cardGap),
+        Row(
+          children: [
+            Expanded(
+              child: StatTile(
+                icon: FontAwesomeIcons.bolt,
+                label: t.t('connections'),
+                value: '${vpn.connections}',
+                color: AppColors.warningAmber,
               ).fadeInUp(index: 4),
+            ),
+            const SizedBox(width: AppSpacing.cardGap),
+            Expanded(
+              child: StatTile(
+                icon: FontAwesomeIcons.stopwatch,
+                label: t.t('uptime'),
+                value: vpn.startedAt > 0 && running ? Fmt.duration(DateTime.now().millisecondsSinceEpoch - vpn.startedAt) : '-',
+              ).fadeInUp(index: 5),
             ),
           ],
         ),
@@ -375,6 +352,77 @@ class _QuickAction extends StatelessWidget {
           FaIcon(icon, size: 20, color: AppColors.primaryBlue),
           const SizedBox(height: 8),
           Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppText.label(p).copyWith(fontSize: 11.5)),
+        ],
+      ),
+    );
+  }
+}
+
+SkyMood _moodFor(VpnStatus v) {
+  if (v.isBusy) return SkyMood.brightening;
+  if (v.isRunning) return v.paused ? SkyMood.dusk : SkyMood.clear;
+  return SkyMood.overcast;
+}
+
+Color _pillColor(VpnStatus v) {
+  if (v.phase == VpnPhase.error) return AppColors.errorRed;
+  if (v.isRunning) return v.paused ? AppColors.warningAmber : AppColors.successGreen;
+  if (v.isBusy) return AppColors.primaryBlue;
+  return AppColors.textSecondary;
+}
+
+class _StatePill extends StatelessWidget {
+  const _StatePill({required this.label, required this.color, required this.active});
+
+  final String label;
+  final Color color;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final dot = Container(width: 9, height: 9, decoration: BoxDecoration(color: color, shape: BoxShape.circle));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: p.surface.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          active
+              ? dot.animate(onPlay: (c) => c.repeat(reverse: true)).fade(begin: 0.45, end: 1, duration: 1100.ms)
+              : dot,
+          const SizedBox(width: 8),
+          Text(label, style: AppText.bodyMedium(p).copyWith(fontSize: 12.5, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      decoration: BoxDecoration(
+        color: p.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FaIcon(icon, size: 12, color: p.brandStrong),
+          const SizedBox(width: 6),
+          Text(label, style: AppText.label(p).copyWith(color: p.textPrimary, fontWeight: FontWeight.w600)),
         ],
       ),
     );
