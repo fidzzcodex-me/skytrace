@@ -8,7 +8,7 @@ class AppComponents {
 
   static List<BoxShadow> cardShadow(AppPalette p) => [
         BoxShadow(
-          color: p.shadow.withOpacity(0.06),
+          color: p.shadow.withValues(alpha: 0.06),
           blurRadius: 12,
           spreadRadius: 0,
           offset: const Offset(0, 4),
@@ -17,7 +17,7 @@ class AppComponents {
 
   static List<BoxShadow> softShadow(AppPalette p) => [
         BoxShadow(
-          color: p.shadow.withOpacity(0.18),
+          color: p.shadow.withValues(alpha: 0.18),
           blurRadius: 16,
           spreadRadius: 0,
           offset: const Offset(0, 6),
@@ -28,7 +28,7 @@ class AppComponents {
         color: p.surface,
         borderRadius: BorderRadius.circular(AppRadius.card),
         boxShadow: cardShadow(p),
-        border: Border.all(color: p.border.withOpacity(0.6), width: 0.5),
+        border: Border.all(color: p.border, width: 1),
       );
 
   static const LinearGradient primaryGradient = LinearGradient(
@@ -82,7 +82,7 @@ class AppComponents {
       textTheme: text,
       extensions: [p],
       splashFactory: InkRipple.splashFactory,
-      dividerTheme: DividerThemeData(color: p.surfaceAlt.withOpacity(0.5), thickness: 0.5, space: 1),
+      dividerTheme: DividerThemeData(color: p.surfaceAlt.withValues(alpha: 0.5), thickness: 0.5, space: 1),
       appBarTheme: AppBarTheme(
         backgroundColor: p.surface,
         elevation: 0,
@@ -104,8 +104,11 @@ class AppComponents {
         elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.control),
-          side: BorderSide(color: AppColors.primaryBlue.withOpacity(0.35)),
+          side: BorderSide(color: AppColors.primaryBlue.withValues(alpha: 0.35)),
         ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: p.brandStrong, textStyle: AppText.bodyMedium(p)),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
@@ -119,7 +122,7 @@ class AppComponents {
       progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.primaryBlue),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: AppColors.primaryBlue,
-        selectionColor: AppColors.accentBlue.withOpacity(0.35),
+        selectionColor: AppColors.accentBlue.withValues(alpha: 0.35),
         selectionHandleColor: AppColors.primaryBlue,
       ),
     );
