@@ -12,6 +12,7 @@ class AppColors {
   static const Color skyGradientBottom = Color(0xFFFFFFFF);
   static const Color textDark = Color(0xFF1A2B4A);
   static const Color textMuted = Color(0xFF7A8FA6);
+  static const Color textSecondary = Color(0xFF5A6E87);
   static const Color successGreen = Color(0xFF4CAF50);
   static const Color warningAmber = Color(0xFFFFB300);
   static const Color errorRed = Color(0xFFE53935);
@@ -87,7 +88,7 @@ class AppPalette extends ThemeExtension<AppPalette> {
     surfaceAlt: AppColors.softSky,
     border: AppColors.softSky,
     textPrimary: AppColors.textDark,
-    textSecondary: AppColors.textMuted,
+    textSecondary: AppColors.textSecondary,
     gradientTop: AppColors.skyGradientTop,
     gradientBottom: AppColors.skyGradientBottom,
     shadow: AppColors.primaryBlue,
