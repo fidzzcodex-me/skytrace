@@ -44,6 +44,8 @@ final settingsProvider = StateNotifierProvider<SettingsController, SettingsState
   (ref) => SettingsController(ref.watch(trafficRepositoryProvider)),
 );
 
+final overlayModeProvider = Provider<bool>((ref) => false);
+
 final installedAppsProvider = FutureProvider.autoDispose.family<List<InstalledApp>, bool>(
   (ref, includeSystem) => ref.watch(trafficRepositoryProvider).installedApps(includeSystem: includeSystem),
 );
