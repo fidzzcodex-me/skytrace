@@ -135,6 +135,7 @@ class AppSettings {
   const AppSettings({
     this.targetApps = const [],
     this.bubbleEnabled = false,
+    this.bubbleWindow = false,
     this.monitorPort = 8080,
     this.monitorStopWithCapture = true,
     this.monitorPinSet = false,
@@ -163,6 +164,7 @@ class AppSettings {
 
   final List<String> targetApps;
   final bool bubbleEnabled;
+  final bool bubbleWindow;
   final int monitorPort;
   final bool monitorStopWithCapture;
   final bool monitorPinSet;
@@ -194,6 +196,7 @@ class AppSettings {
         monitorStopWithCapture: (m['monitorStopWithCapture'] ?? true) as bool,
         monitorPinSet: (m['monitorPinSet'] ?? false) as bool,
         bubbleEnabled: (m['bubbleEnabled'] ?? false) as bool,
+        bubbleWindow: (m['bubbleWindow'] ?? false) as bool,
         captureMode: (m['captureMode'] ?? 'vpn') as String,
         proxyPort: ((m['proxyPort'] ?? 8888) as num).toInt(),
         proxyAuth: (m['proxyAuth'] ?? '') as String,
