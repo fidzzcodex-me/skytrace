@@ -7,11 +7,11 @@ import '../providers/settings_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
 import '../theme/component_styles.dart';
+import '../theme/sky.dart';
 import '../theme/text_styles.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/cert_guide.dart';
 import '../widgets/sky_button.dart';
-import '../widgets/trace_arc.dart';
 import 'home_screen.dart';
 
 const String _trustSnippet = '<network-security-config>\n'
@@ -63,8 +63,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final t = ref.watch(stringsProvider);
     final p = context.palette;
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: AppComponents.skyBackground(p)),
+      body: SkyScene(
+        mood: SkyMood.brightening,
         child: SafeArea(
           child: Column(
             children: [
@@ -124,7 +124,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               width: i == _page ? 22 : 7,
                               height: 7,
                               decoration: BoxDecoration(
-                                color: i == _page ? AppColors.primaryBlue : AppColors.accentBlue.withOpacity(0.4),
+                                color: i == _page ? AppColors.primaryBlue : AppColors.accentBlue.withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(AppRadius.pill),
                               ),
                             ),
@@ -160,7 +160,6 @@ class _WelcomePage extends StatelessWidget {
     final p = context.palette;
     return Stack(
       children: [
-        const Positioned(top: 10, right: -60, child: TraceArc(size: 250, opacity: 0.25)),
         Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.page * 1.5),
