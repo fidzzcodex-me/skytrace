@@ -74,6 +74,8 @@ class _BubbleSettingsCardState extends ConsumerState<BubbleSettingsCard> with Wi
                     const SizedBox(height: 10),
                     Text(t.t('bubble_explain'), style: AppText.body(p).copyWith(fontSize: 13)),
                     const SizedBox(height: 10),
+                    Text(t.t('bubble_restricted'), style: AppText.caption(p).copyWith(fontSize: 12.5)),
+                    const SizedBox(height: 10),
                     Text(t.t('bubble_oem'), style: AppText.caption(p).copyWith(fontSize: 12.5)),
                     const SizedBox(height: 16),
                     SkyButton(
@@ -82,6 +84,17 @@ class _BubbleSettingsCardState extends ConsumerState<BubbleSettingsCard> with Wi
                       icon: const FaIcon(FontAwesomeIcons.gear),
                       onPressed: () {
                         ref.read(trafficRepositoryProvider).openSettings('overlay');
+                        Navigator.of(ctx).pop();
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    SkyButton(
+                      label: t.t('bubble_open_app_info'),
+                      secondary: true,
+                      expand: true,
+                      icon: const FaIcon(FontAwesomeIcons.circleInfo),
+                      onPressed: () {
+                        ref.read(trafficRepositoryProvider).openSettings('app');
                         Navigator.of(ctx).pop();
                       },
                     ),
@@ -120,6 +133,7 @@ class _BubbleSettingsCardState extends ConsumerState<BubbleSettingsCard> with Wi
     final t = ref.watch(stringsProvider);
     final p = context.palette;
     final enabled = ref.watch(settingsProvider.select((s) => s.settings.bubbleEnabled));
+    final windowEnabled = ref.watch(settingsProvider.select((s) => s.settings.bubbleWindow));
     final async = ref.watch(bubbleSupportProvider);
 
     return AnimatedCard(
@@ -191,6 +205,31 @@ class _BubbleSettingsCardState extends ConsumerState<BubbleSettingsCard> with Wi
               if (support.supported) ...[
                 const SizedBox(height: 8),
                 Text(t.t('bubble_how'), style: AppText.label(p)),
+              ],
+              if (!support.unsupported) ...[
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    const FaIcon(FontAwesomeIcons.mobileScreen, size: 16, color: AppColors.primaryBlue),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(t.t('bubble_window_toggle'), style: AppText.body(p))),
+                    Switch(
+                      value: windowEnabled,
+                      onChanged: (v) async {
+                        await ref.read(settingsProvider.notifier).update({'bubbleWindow': v});
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  t.t('bubble_window_warn'),
+                  style: AppText.label(p).copyWith(color: AppColors.warningAmber, fontWeight: FontWeight.w600),
+                ),
+                if (windowEnabled) ...[
+                  const SizedBox(height: 4),
+                  Text(t.t('bubble_window_how'), style: AppText.label(p)),
+                ],
               ],
             ],
           );
