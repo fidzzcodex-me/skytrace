@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../theme/animations.dart';
 import '../theme/colors.dart';
+import '../theme/sky.dart';
 import '../theme/text_styles.dart';
 
 class EmptyState extends StatelessWidget {
@@ -28,13 +29,7 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 84,
-              height: 84,
-              decoration: BoxDecoration(color: p.surfaceAlt, shape: BoxShape.circle),
-              alignment: Alignment.center,
-              child: FaIcon(icon, size: 30, color: AppColors.primaryBlue),
-            ).scaleIn(),
+            CloudBadge(icon: FaIcon(icon, size: 26, color: AppColors.primaryBlue)).scaleIn(),
             const SizedBox(height: 20),
             Text(title, style: AppText.heading(p), textAlign: TextAlign.center).fadeInUp(index: 1),
             const SizedBox(height: 6),
