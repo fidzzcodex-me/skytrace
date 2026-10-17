@@ -8,6 +8,7 @@ import '../providers/update_provider.dart';
 import '../providers/vpn_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
+import '../theme/sky.dart';
 import '../theme/text_styles.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/sky_nav_bar.dart';
@@ -32,7 +33,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(updateProvider.notifier).check();
+      if (mounted && !ref.read(overlayModeProvider)) ref.read(updateProvider.notifier).check();
     });
   }
 
@@ -94,19 +95,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(width: 4),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: p.surfaceAlt),
+        backgroundColor: p.gradientTop,
+        surfaceTintColor: Colors.transparent,
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1.5),
+          child: HorizonLine(),
         ),
       ),
-      body: IndexedStack(
-        index: _index,
-        children: [
-          DashboardScreen(onOpenTraffic: () => goTo(1), onOpenRules: () => goTo(2)),
-          const TrafficScreen(),
-          const RulesScreen(),
-          const StatsScreen(),
-        ],
+      body: DecoratedBox(
+        decoration: BoxDecoration(gradient: AppSky.page(p)),
+        child: IndexedStack(
+          index: _index,
+          children: [
+            DashboardScreen(onOpenTraffic: () => goTo(1), onOpenRules: () => goTo(2)),
+            const TrafficScreen(),
+            const RulesScreen(),
+            const StatsScreen(),
+          ],
+        ),
       ),
       bottomNavigationBar: SkyNavBar(
         items: items,
