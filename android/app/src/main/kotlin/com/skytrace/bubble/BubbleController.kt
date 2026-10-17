@@ -43,6 +43,7 @@ object BubbleController {
     private var panel: View? = null
     private var panelCount: TextView? = null
     private var closeTarget: View? = null
+    private var floating: FloatingWindow? = null
     private var params: WindowManager.LayoutParams? = null
     private var capturing = false
     private var dismissedForSession = false
@@ -385,7 +386,24 @@ object BubbleController {
         closeTarget = null
     }
 
+    private fun toggleFloatingWindow(ctx: Context) {
+        val wm = windowManager ?: return
+        val current = floating
+        if (current != null && current.isShowing) {
+            current.hide()
+            return
+        }
+        hidePanel()
+        val created = FloatingWindow(ctx, wm) { floating = null }
+        floating = created
+        created.show()
+    }
+
     private fun togglePanel(ctx: Context, bubbleSize: Int) {
+        if (Graph.settings.bubbleWindow) {
+            toggleFloatingWindow(ctx)
+            return
+        }
         if (panel != null) {
             hidePanel()
             return
@@ -499,6 +517,8 @@ object BubbleController {
 
     private fun hide() {
         main.removeCallbacks(tick)
+        floating?.hide()
+        floating = null
         hidePanel()
         hideCloseTarget()
         val view = bubble ?: return
