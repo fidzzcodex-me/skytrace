@@ -5,10 +5,9 @@ import '../providers/settings_provider.dart';
 import '../providers/update_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
-import '../theme/component_styles.dart';
+import '../theme/sky.dart';
 import '../theme/text_styles.dart';
 import '../widgets/app_logo.dart';
-import '../widgets/trace_arc.dart';
 
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
@@ -19,11 +18,10 @@ class AboutScreen extends ConsumerWidget {
     final p = context.palette;
     return Scaffold(
       appBar: AppBar(title: Text(t.t('set_about'))),
-      body: Container(
-        decoration: BoxDecoration(gradient: AppComponents.skyBackground(p)),
+      body: SkyScene(
+        mood: SkyMood.brightening,
         child: Stack(
           children: [
-            const Positioned(top: 0, right: -60, child: TraceArc(size: 260, opacity: 0.25)),
             Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(AppSpacing.page * 2),
