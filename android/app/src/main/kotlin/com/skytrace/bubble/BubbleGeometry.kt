@@ -10,6 +10,12 @@ object BubbleGeometry {
         )
     }
 
+    fun clampRect(x: Int, y: Int, w: Int, h: Int, screenW: Int, screenH: Int): Pair<Int, Int> {
+        return Pair(clamp(x, 0, screenW - w), clamp(y, 0, screenH - h))
+    }
+
+    fun clampSize(value: Int, min: Int, max: Int): Int = if (max < min) max.coerceAtLeast(0) else value.coerceIn(min, max)
+
     fun snapX(x: Int, screenW: Int, size: Int, margin: Int): Int {
         val center = x + size / 2
         return if (center < screenW / 2) margin else screenW - size - margin
