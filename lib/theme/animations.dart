@@ -3,8 +3,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import 'colors.dart';
 
+class MotionPrefs {
+  const MotionPrefs._();
+
+  static bool reduce = false;
+}
+
 extension AosAnimate on Widget {
   Widget fadeInUp({int index = 0, double distance = 14}) {
+    if (MotionPrefs.reduce) return this;
     final delay = AppMotion.stagger * (index > 12 ? 12 : index);
     return animate(delay: delay)
         .fadeIn(duration: AppMotion.base, curve: AppMotion.curve)
@@ -12,10 +19,12 @@ extension AosAnimate on Widget {
   }
 
   Widget fadeInSoft({Duration delay = Duration.zero}) {
+    if (MotionPrefs.reduce) return this;
     return animate(delay: delay).fadeIn(duration: AppMotion.fast, curve: AppMotion.curve);
   }
 
   Widget scaleIn({Duration delay = Duration.zero}) {
+    if (MotionPrefs.reduce) return this;
     return animate(delay: delay)
         .fadeIn(duration: AppMotion.fast, curve: AppMotion.curve)
         .scale(begin: const Offset(0.94, 0.94), end: const Offset(1, 1), duration: AppMotion.fast, curve: AppMotion.curve);
@@ -65,7 +74,7 @@ Future<T?> showScaleDialog<T>({
     context: context,
     barrierDismissible: dismissible,
     barrierLabel: 'dialog',
-    barrierColor: Colors.black.withOpacity(0.28),
+    barrierColor: Colors.black.withValues(alpha: 0.28),
     transitionDuration: AppMotion.fast,
     pageBuilder: (ctx, a, b) => builder(ctx),
     transitionBuilder: (ctx, animation, secondary, child) {
