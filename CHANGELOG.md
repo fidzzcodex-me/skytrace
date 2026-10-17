@@ -2,6 +2,22 @@
 
 Format mengikuti Keep a Changelog dan versi mengikuti Semantic Versioning.
 
+## [1.5.0]
+
+### Diubah
+
+- Tema cloud dan sky diperkuat: langit yang bereaksi pada status capture di kartu hero Beranda (mendung, mencerah, cerah dengan awan bergeser, senja saat dijeda), garis cakrawala di AppBar, gradasi langit di latar, dan ilustrasi awan pada keadaan kosong
+- Beranda dirapikan: hero menampilkan jumlah request besar dengan satu tombol Mulai atau Hentikan
+- Kontras teks diperbaiki: teks sekunder memakai warna lebih gelap dan tombol teks memakai biru tua agar lolos AA
+- Animasi masuk dan awan dihentikan bila pengaturan sistem menghapus animasi
+- Dokumen identitas diperbarui dan ada tes otomatis untuk kontras teks di atas langit
+
+## [1.4.0]
+
+### Ditambahkan
+
+- Jendela mengambang berisi seluruh aplikasi SkyTrace (traffic, detail, aturan, statistik, setelan). Ketuk bubble untuk membukanya, seret judul untuk memindahkan, seret pojok kanan bawah untuk mengubah ukuran, tombol kotak membuka aplikasi penuh, minus atau silang menutupnya. Posisi dan ukuran tersimpan. Default mati karena jendela ini menampilkan URL dan isi traffic; dinyalakan lewat Setelan, Bubble mengambang
+
 ## [1.3.0]
 
 ### Ditambahkan
