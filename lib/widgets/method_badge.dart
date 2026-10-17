@@ -16,7 +16,7 @@ Color methodColor(String method) {
     case 'DELETE':
       return AppColors.errorRed;
     default:
-      return AppColors.textMuted;
+      return AppColors.textSecondary;
   }
 }
 
@@ -34,7 +34,7 @@ class MethodBadge extends StatelessWidget {
       constraints: BoxConstraints(minWidth: compact ? 38 : 48),
       padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.center,
