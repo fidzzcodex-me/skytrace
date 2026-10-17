@@ -313,11 +313,18 @@ const Map<String, List<String>> _table = {
   'bubble_open_settings': ['Buka Settings', 'Open Settings'],
   'bubble_explain': ['Bubble memakai izin "Tampilkan di atas aplikasi lain" agar bisa mengambang di atas aplikasi yang kamu debug. Bubble hanya berisi ikon dan jumlah request baru, tanpa URL atau isi traffic.', 'The bubble uses the "Display over other apps" permission so it can float above the app you debug. It only shows an icon and a count of new requests, never URLs or traffic content.'],
   'bubble_oem': ['Di Xiaomi, Oppo, Vivo, Huawei, dan beberapa merek lain, aktifkan juga izin tambahan seperti "Tampilkan jendela pop-up saat berjalan di latar belakang" dan izinkan SkyTrace berjalan otomatis.', 'On Xiaomi, Oppo, Vivo, Huawei and some other brands, also enable extra permissions such as "Display pop-up windows while running in the background" and allow SkyTrace to auto-start.'],
+  'bubble_restricted': ['Android 13 ke atas: bila muncul "Aplikasi tidak diberi akses" (setelan terbatas), buka info aplikasi SkyTrace, ketuk titik tiga di pojok kanan atas, pilih "Izinkan setelan terbatas", lalu ulangi pemberian izin.', 'Android 13 and up: if you see "App was denied access" (restricted setting), open the SkyTrace app info, tap the three dots at the top right, choose "Allow restricted settings", then grant the permission again.'],
+  'bubble_open_app_info': ['Buka info aplikasi', 'Open app info'],
+  'bubble_window_toggle': ['Ketuk bubble untuk membuka aplikasi di jendela mengambang', 'Tap the bubble to open the app in a floating window'],
+  'bubble_window_warn': ['Jendela ini menampilkan URL dan isi traffic di atas aplikasi lain. Nyalakan hanya di perangkat yang kamu percaya.', 'This window shows URLs and traffic content over other apps. Enable it only on a device you trust.'],
+  'bubble_window_how': ['Seret judul untuk memindahkan, seret pojok kanan bawah untuk mengubah ukuran, tombol kotak untuk membuka aplikasi penuh, tanda minus atau silang untuk menutup.', 'Drag the title to move, drag the bottom-right corner to resize, use the box button to open the full app, and minus or cross to close.'],
   'bubble_how': ['Geser untuk memindahkan, ketuk untuk panel mini, tekan lama atau tarik ke tanda X untuk menyembunyikan.', 'Drag to move, tap for the mini panel, long press or drag to the X to hide.'],
   'diag_bubble': ['Bubble mengambang', 'Floating bubble'],
   'diag_bubble_supported': ['Didukung.', 'Supported.'],
   'diag_bubble_needs_permission': ['Perlu izin "Tampilkan di atas aplikasi lain".', 'Needs the "Display over other apps" permission.'],
   'diag_bubble_unsupported': ['Tidak didukung di perangkat ini.', 'Not supported on this device.'],
+  'uptime': ['Aktif selama', 'Uptime'],
+  'rec_paused': ['Dijeda', 'Paused'],
   'ws_note': ['Log frame WebSocket', 'WebSocket frame log'],
 };
 
