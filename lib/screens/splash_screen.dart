@@ -6,10 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_provider.dart';
 import '../theme/animations.dart';
 import '../theme/colors.dart';
-import '../theme/component_styles.dart';
+import '../theme/sky.dart';
 import '../theme/text_styles.dart';
 import '../widgets/app_logo.dart';
-import '../widgets/trace_arc.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
 
@@ -54,13 +53,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     ref.listen(settingsProvider, (_, __) => _tryNavigate());
     final palette = AppPalette.light;
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: AppComponents.skyBackground(palette)),
+      body: SkyScene(
+        mood: SkyMood.clear,
+        forceLight: true,
         child: SafeArea(
           child: Stack(
             children: [
-              const Positioned(top: 40, right: -40, child: TraceArc(size: 260, opacity: 0.28)),
-              const Positioned(bottom: 60, left: -60, child: TraceArc(size: 220, opacity: 0.2)),
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.page * 2),
