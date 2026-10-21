@@ -44,6 +44,8 @@ class TrafficSummary {
 
   bool get possiblePinning => (method == 'TLS' && error != null) || (tunnel && statusMessage == 'bypass-auto');
 
+  bool get blocked => method == 'BLOCKED';
+
   bool get isPending => statusCode == 0 && error == null && !tunnel && totalMs == 0;
   bool get isFailed => error != null;
 
