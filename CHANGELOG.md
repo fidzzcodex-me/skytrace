@@ -2,6 +2,18 @@
 
 Format mengikuti Keep a Changelog dan versi mengikuti Semantic Versioning.
 
+## [1.6.0]
+
+### Ditambahkan
+
+- Pemblokir iklan dan pelacak saat capture (default mati). Memblokir lewat DNS (VPN), SNI, header Host, dan CONNECT (proxy) memakai daftar bawaan iklan dan pelacak, ditambah daftar blokir dan pengecualian milikmu (mendukung wildcard). Request yang diblokir muncul di daftar traffic bertanda BLOCK, ada penghitung di Beranda, dan bisa diizinkan atau diblokir lewat tekan lama
+
+### Diubah
+
+- Bubble kini berdiri sendiri: tetap aktif sampai dimatikan, tidak peduli capture hidup atau mati, dan kembali aktif setelah HP restart (layanan foreground sendiri dengan tombol Matikan di notifikasi)
+- Bentuk bubble menjadi tab yang bersembunyi di tepi layar. Geser ke dalam untuk mengeluarkannya, ketuk untuk membuka, dan otomatis bersembunyi lagi setelah 3,5 detik. Tarik ke tanda X untuk mematikan bubble
+- Panel mini menyesuaikan status: tombol Stop capture hanya muncul saat capture berjalan
+
 ## [1.5.0]
 
 ### Diubah
