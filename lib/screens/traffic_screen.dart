@@ -114,6 +114,7 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
     final t = ref.read(stringsProvider);
     final controller = ref.read(trafficProvider.notifier);
     final hasFilter = !ref.read(trafficProvider).filter.isEmpty;
+    final adSettings = ref.read(settingsProvider).settings;
     final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
@@ -131,6 +132,18 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
               title: Text(t.t('del_item')),
               onTap: () => Navigator.of(ctx).pop('item'),
             ),
+            if (item.blocked)
+              ListTile(
+                leading: const FaIcon(FontAwesomeIcons.circleCheck, size: 16, color: AppColors.successGreen),
+                title: Text(t.t('allow_domain')),
+                onTap: () => Navigator.of(ctx).pop('allow'),
+              )
+            else if (adSettings.adblockEnabled && !item.tunnel && item.method != 'TLS')
+              ListTile(
+                leading: const FaIcon(FontAwesomeIcons.ban, size: 16, color: AppColors.warningAmber),
+                title: Text(t.t('block_domain')),
+                onTap: () => Navigator.of(ctx).pop('block'),
+              ),
             if (hasFilter)
               ListTile(
                 leading: const FaIcon(FontAwesomeIcons.filter, size: 16, color: AppColors.errorRed),
@@ -149,6 +162,14 @@ class _TrafficScreenState extends ConsumerState<TrafficScreen> {
     } else if (action == 'item') {
       await controller.deleteItem(item.id);
       messenger.showSnackBar(SnackBar(content: Text(t.t('del_done')), duration: const Duration(seconds: 1)));
+    } else if (action == 'allow') {
+      final list = adSettings.adblockAllow.trim();
+      await ref.read(settingsProvider.notifier).update({'adblockAllow': list.isEmpty ? item.host : '$list\n${item.host}'});
+      messenger.showSnackBar(SnackBar(content: Text(t.t('target_saved')), duration: const Duration(seconds: 1)));
+    } else if (action == 'block') {
+      final list = adSettings.adblockCustom.trim();
+      await ref.read(settingsProvider.notifier).update({'adblockCustom': list.isEmpty ? item.host : '$list\n${item.host}'});
+      messenger.showSnackBar(SnackBar(content: Text(t.t('target_saved')), duration: const Duration(seconds: 1)));
     } else if (action == 'filtered') {
       await controller.deleteFiltered();
       messenger.showSnackBar(SnackBar(content: Text(t.t('del_done')), duration: const Duration(seconds: 1)));
