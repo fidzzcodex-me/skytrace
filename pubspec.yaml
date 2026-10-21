@@ -1,7 +1,7 @@
 name: skytrace
 description: Open-source local VPN traffic inspector for debugging your own APIs on Android.
 publish_to: "none"
-version: 1.5.0+6
+version: 1.6.0+7
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
