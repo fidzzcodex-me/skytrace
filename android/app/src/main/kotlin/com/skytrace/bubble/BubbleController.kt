@@ -1,5 +1,6 @@
 package com.skytrace.bubble
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -19,10 +20,12 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import com.skytrace.MainActivity
 import com.skytrace.R
 import com.skytrace.repo.Graph
@@ -32,24 +35,33 @@ import com.skytrace.vpn.VpnServiceManager
 import java.util.concurrent.Callable
 import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 import kotlin.math.hypot
 
 object BubbleController {
+    private const val RETRACT_MS = 3500L
+
     private var appContext: Context? = null
     private val main = Handler(Looper.getMainLooper())
     private var windowManager: WindowManager? = null
     private var bubble: FrameLayout? = null
+    private var logoView: ImageView? = null
+    private var arrowView: TextView? = null
     private var badge: TextView? = null
+    private var circle: GradientDrawable? = null
     private var panel: View? = null
     private var panelCount: TextView? = null
     private var closeTarget: View? = null
     private var floating: FloatingWindow? = null
     private var params: WindowManager.LayoutParams? = null
-    private var capturing = false
-    private var dismissedForSession = false
+    private var animator: ValueAnimator? = null
+    private var docked = true
+    private var side = 1
     private var baseline = 0L
     private var lastBadge = -1L
     private var probeCache: Boolean? = null
+
+    private val retract = Runnable { dock() }
 
     private val tick = object : Runnable {
         override fun run() {
@@ -66,16 +78,38 @@ object BubbleController {
     }
 
     fun onStateChanged(running: Boolean) {
-        capturing = running
-        if (running) {
-            dismissedForSession = false
-            baseline = LiveStats.requests.get()
-        }
-        main.post { refreshInternal() }
+        if (running) baseline = LiveStats.requests.get()
     }
 
     fun refresh() {
         main.post { refreshInternal() }
+    }
+
+    fun relayout() {
+        main.post {
+            hide()
+            refreshInternal()
+        }
+    }
+
+    fun ensureService(context: Context) {
+        val enabled = try {
+            Graph.settings.bubbleEnabled
+        } catch (e: Exception) {
+            false
+        }
+        val intent = Intent(context, BubbleService::class.java)
+        try {
+            if (enabled) {
+                intent.action = BubbleService.ACTION_START
+                ContextCompat.startForegroundService(context, intent)
+            } else {
+                context.stopService(intent)
+            }
+        } catch (e: Exception) {
+            Logger.w("bubble service sync failed", e)
+        }
+        refresh()
     }
 
     fun permissionIntent(context: Context): Intent =
@@ -143,7 +177,6 @@ object BubbleController {
     }
 
     private fun shouldShow(ctx: Context): Boolean {
-        if (!capturing || dismissedForSession) return false
         val enabled = try {
             Graph.settings.bubbleEnabled
         } catch (e: Exception) {
@@ -172,6 +205,87 @@ object BubbleController {
         false
     }
 
+    private fun dockedX(ctx: Context, size: Int): Int {
+        val peek = dp(ctx, 20f)
+        val screenW = ctx.resources.displayMetrics.widthPixels
+        return if (side == 0) -(size - peek) else screenW - peek
+    }
+
+    private fun openX(ctx: Context, size: Int): Int {
+        val margin = dp(ctx, 8f)
+        val screenW = ctx.resources.displayMetrics.widthPixels
+        return if (side == 0) margin else screenW - size - margin
+    }
+
+    private fun applyDockedStyle(active: Boolean) {
+        circle?.setColor(if (active) 0xFF4A90E2.toInt() else Color.WHITE)
+        logoView?.animate()?.alpha(if (active) 0f else 1f)?.setDuration(180)?.start()
+        arrowView?.animate()?.alpha(if (active) 1f else 0f)?.setDuration(180)?.start()
+        val arrow = arrowView
+        if (arrow != null) {
+            arrow.text = if (side == 0) "\u203A" else "\u2039"
+            val lp = arrow.layoutParams as FrameLayout.LayoutParams
+            lp.gravity = (if (side == 0) Gravity.END else Gravity.START) or Gravity.CENTER_VERTICAL
+            arrow.layoutParams = lp
+        }
+        val badgeView = badge
+        if (badgeView != null) {
+            val lp = badgeView.layoutParams as FrameLayout.LayoutParams
+            lp.gravity = Gravity.TOP or (if (side == 0) Gravity.END else Gravity.START)
+            badgeView.layoutParams = lp
+        }
+    }
+
+    private fun animateX(root: View, lp: WindowManager.LayoutParams, to: Int, onEnd: (() -> Unit)? = null) {
+        animator?.cancel()
+        val anim = ValueAnimator.ofInt(lp.x, to)
+        anim.duration = 220
+        anim.interpolator = DecelerateInterpolator()
+        anim.addUpdateListener {
+            lp.x = it.animatedValue as Int
+            try {
+                windowManager?.updateViewLayout(root, lp)
+            } catch (e: Exception) {
+                anim.cancel()
+            }
+        }
+        anim.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                onEnd?.invoke()
+            }
+        })
+        animator = anim
+        anim.start()
+    }
+
+    private fun expand(ctx: Context) {
+        val root = bubble ?: return
+        val lp = params ?: return
+        if (!docked) {
+            scheduleRetract()
+            return
+        }
+        docked = false
+        applyDockedStyle(false)
+        animateX(root, lp, openX(ctx, dp(ctx, 56f)))
+        scheduleRetract()
+    }
+
+    private fun dock() {
+        val ctx = appContext ?: return
+        val root = bubble ?: return
+        val lp = params ?: return
+        if (docked || panel != null || floating?.isShowing == true || closeTarget != null) return
+        docked = true
+        applyDockedStyle(true)
+        animateX(root, lp, dockedX(ctx, dp(ctx, 56f)))
+    }
+
+    private fun scheduleRetract() {
+        main.removeCallbacks(retract)
+        main.postDelayed(retract, RETRACT_MS)
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun show(ctx: Context) {
         if (bubble != null) return
@@ -179,20 +293,37 @@ object BubbleController {
         windowManager = wm
         val size = dp(ctx, 56f)
         val dm = ctx.resources.displayMetrics
+        side = if (Graph.settings.bubbleSide == 0) 0 else 1
+        docked = true
 
         val root = FrameLayout(ctx)
+        val bg = GradientDrawable()
+        bg.shape = GradientDrawable.OVAL
+        bg.setColor(0xFF4A90E2.toInt())
+        bg.setStroke(dp(ctx, 1.5f), 0x554A90E2)
+        circle = bg
+
         val icon = ImageView(ctx)
         icon.setImageResource(R.drawable.splash_logo)
         icon.scaleType = ImageView.ScaleType.FIT_CENTER
         val pad = dp(ctx, 10f)
         icon.setPadding(pad, pad, pad, pad)
-        val circle = GradientDrawable()
-        circle.shape = GradientDrawable.OVAL
-        circle.setColor(Color.WHITE)
-        circle.setStroke(dp(ctx, 1.5f), 0x554A90E2)
-        icon.background = circle
-        icon.elevation = dp(ctx, 6f).toFloat()
-        root.addView(icon, FrameLayout.LayoutParams(size, size))
+        icon.alpha = 0f
+        val base = FrameLayout(ctx)
+        base.background = bg
+        base.elevation = dp(ctx, 6f).toFloat()
+        base.addView(icon, FrameLayout.LayoutParams(size, size))
+        val arrow = TextView(ctx)
+        arrow.setTextColor(Color.WHITE)
+        arrow.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+        arrow.gravity = Gravity.CENTER
+        base.addView(
+            arrow,
+            FrameLayout.LayoutParams(dp(ctx, 20f), size, Gravity.CENTER_VERTICAL or (if (side == 0) Gravity.END else Gravity.START))
+        )
+        root.addView(base, FrameLayout.LayoutParams(size, size))
+        logoView = icon
+        arrowView = arrow
 
         val badgeView = TextView(ctx)
         badgeView.setTextColor(Color.WHITE)
@@ -209,98 +340,96 @@ object BubbleController {
         badgeView.elevation = dp(ctx, 8f).toFloat()
         root.addView(
             badgeView,
-            FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(ctx, 18f), Gravity.TOP or Gravity.END)
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(ctx, 18f), Gravity.TOP or (if (side == 0) Gravity.END else Gravity.START))
         )
+        badge = badgeView
 
-        val margin = dp(ctx, 8f)
-        val savedX = Graph.settings.bubbleX
         val savedY = Graph.settings.bubbleY
-        val startX = if (savedX >= 0) savedX else dm.widthPixels - size - margin
         val startY = if (savedY >= 0) savedY else (dm.heightPixels * 0.35f).toInt()
-        val (cx, cy) = BubbleGeometry.clampPosition(startX, startY, dm.widthPixels, dm.heightPixels, size)
+        val (_, cy) = BubbleGeometry.clampPosition(0, startY, dm.widthPixels, dm.heightPixels, size)
 
         val lp = layout(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
         )
-        lp.x = cx
+        lp.x = dockedX(ctx, size)
         lp.y = cy
         params = lp
+        applyDockedStyle(true)
 
         val slop = ViewConfiguration.get(ctx).scaledTouchSlop
+        val slide = dp(ctx, 14f)
         var downX = 0
         var downY = 0
         var touchX = 0f
         var touchY = 0f
         var moved = false
-        var longPressed = false
-        val longPress = Runnable {
-            if (!moved) {
-                longPressed = true
-                dismissForSession()
-            }
-        }
+        var startedDocked = false
 
         root.setOnTouchListener { _, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    main.removeCallbacks(retract)
+                    animator?.cancel()
                     downX = lp.x
                     downY = lp.y
                     touchX = event.rawX
                     touchY = event.rawY
                     moved = false
-                    longPressed = false
-                    main.postDelayed(longPress, 700)
+                    startedDocked = docked
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - touchX
                     val dy = event.rawY - touchY
-                    if (!moved && hypot(dx, dy) > slop) {
-                        moved = true
-                        main.removeCallbacks(longPress)
-                        hidePanel()
-                        showCloseTarget(ctx)
-                    }
-                    if (moved) {
-                        val (nx, ny) = BubbleGeometry.clampPosition(
-                            downX + dx.toInt(), downY + dy.toInt(), dm.widthPixels, dm.heightPixels, size
-                        )
-                        lp.x = nx
-                        lp.y = ny
-                        try {
-                            wm.updateViewLayout(root, lp)
-                        } catch (e: Exception) {
-                            Logger.d("bubble move skipped")
+                    if (startedDocked) {
+                        val inward = if (side == 0) dx else -dx
+                        if (inward >= slide && docked) {
+                            moved = true
+                            expand(ctx)
                         }
-                        highlightTarget(isOverCloseTarget(size))
+                    } else {
+                        if (!moved && hypot(dx, dy) > slop) {
+                            moved = true
+                            hidePanel()
+                            showCloseTarget(ctx)
+                        }
+                        if (moved) {
+                            val (nx, ny) = BubbleGeometry.clampPosition(
+                                downX + dx.toInt(), downY + dy.toInt(), dm.widthPixels, dm.heightPixels, size
+                            )
+                            lp.x = nx
+                            lp.y = ny
+                            try {
+                                wm.updateViewLayout(root, lp)
+                            } catch (e: Exception) {
+                                Logger.d("bubble move skipped")
+                            }
+                            highlightTarget(isOverCloseTarget(size))
+                        }
                     }
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    main.removeCallbacks(longPress)
-                    val over = moved && isOverCloseTarget(size)
+                    val over = !startedDocked && moved && isOverCloseTarget(size)
                     hideCloseTarget()
-                    if (longPressed) {
-                        true
+                    if (startedDocked) {
+                        if (!moved) expand(ctx)
                     } else if (!moved) {
                         togglePanel(ctx, size)
-                        true
+                        if (panel == null && floating?.isShowing != true) scheduleRetract()
                     } else if (over) {
-                        dismissForSession()
-                        true
+                        disableBubble(ctx)
                     } else {
-                        lp.x = BubbleGeometry.snapX(lp.x, dm.widthPixels, size, margin)
-                        try {
-                            wm.updateViewLayout(root, lp)
-                        } catch (e: Exception) {
-                            Logger.d("bubble snap skipped")
-                        }
-                        Graph.settings.bubbleX = lp.x
+                        side = if (lp.x + size / 2 < dm.widthPixels / 2) 0 else 1
+                        Graph.settings.bubbleSide = side
                         Graph.settings.bubbleY = lp.y
-                        true
+                        applyDockedStyle(false)
+                        animateX(root, lp, openX(ctx, size))
+                        scheduleRetract()
                     }
+                    true
                 }
                 else -> false
             }
@@ -308,12 +437,17 @@ object BubbleController {
 
         wm.addView(root, lp)
         bubble = root
-        badge = badgeView
         baseline = LiveStats.requests.get()
         lastBadge = -1
         updateBadge()
         main.removeCallbacks(tick)
         main.postDelayed(tick, 2000)
+    }
+
+    private fun disableBubble(ctx: Context) {
+        Graph.settings.bubbleEnabled = false
+        hide()
+        ensureService(ctx)
     }
 
     private fun updateBadge() {
@@ -328,11 +462,6 @@ object BubbleController {
             view.visibility = View.VISIBLE
         }
         panelCount?.text = "${LiveStats.requests.get()}"
-    }
-
-    private fun dismissForSession() {
-        dismissedForSession = true
-        hide()
     }
 
     private fun showCloseTarget(ctx: Context) {
@@ -394,7 +523,10 @@ object BubbleController {
             return
         }
         hidePanel()
-        val created = FloatingWindow(ctx, wm) { floating = null }
+        val created = FloatingWindow(ctx, wm) {
+            floating = null
+            if (bubble != null) scheduleRetract()
+        }
         floating = created
         created.show()
     }
@@ -413,6 +545,7 @@ object BubbleController {
         val dm = ctx.resources.displayMetrics
         val en = isEnglish()
         val width = dp(ctx, 220f)
+        val running = VpnServiceManager.isRunning()
 
         val box = LinearLayout(ctx)
         box.orientation = LinearLayout.VERTICAL
@@ -436,14 +569,18 @@ object BubbleController {
 
         val mode = if (VpnServiceManager.activeMode == "proxy") "Proxy" else "VPN"
         box.addView(label("SkyTrace", 15f, 0xFF2C5F9E.toInt(), true))
-        box.addView(label(if (en) "Capture on ($mode)" else "Capture aktif ($mode)", 12.5f, 0xFF4CAF50.toInt(), true))
+        if (running) {
+            box.addView(label(if (en) "Capture on ($mode)" else "Capture aktif ($mode)", 12.5f, 0xFF3D8B40.toInt(), true))
+        } else {
+            box.addView(label(if (en) "Capture off" else "Capture mati", 12.5f, 0xFF5A6E87.toInt(), true))
+        }
         val countRow = LinearLayout(ctx)
         countRow.orientation = LinearLayout.HORIZONTAL
         countRow.setPadding(0, dp(ctx, 6f), 0, dp(ctx, 10f))
         val count = label("${LiveStats.requests.get()}", 20f, 0xFF1A2B4A.toInt(), true)
         panelCount = count
         countRow.addView(count)
-        val unit = label(if (en) "  requests" else "  request", 12.5f, 0xFF7A8FA6.toInt(), false)
+        val unit = label(if (en) "  requests" else "  request", 12.5f, 0xFF5A6E87.toInt(), false)
         unit.gravity = Gravity.BOTTOM
         countRow.addView(unit)
         box.addView(countRow)
@@ -468,14 +605,16 @@ object BubbleController {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             ctx.startActivity(intent)
         }
-        val stopBtn = button(if (en) "Stop capture" else "Stop capture", 0xFFFDECEA.toInt(), 0xFFE53935.toInt()) {
-            hidePanel()
-            VpnServiceManager.stop(ctx)
-        }
-        val gap = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        gap.topMargin = dp(ctx, 8f)
         box.addView(openBtn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-        box.addView(stopBtn, gap)
+        if (running) {
+            val stopBtn = button("Stop capture", 0xFFFDECEA.toInt(), 0xFFC62828.toInt()) {
+                hidePanel()
+                VpnServiceManager.stop(ctx)
+            }
+            val gap = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            gap.topMargin = dp(ctx, 8f)
+            box.addView(stopBtn, gap)
+        }
 
         val lp = layout(
             width,
@@ -513,10 +652,14 @@ object BubbleController {
         }
         panel = null
         panelCount = null
+        if (bubble != null) scheduleRetract()
     }
 
     private fun hide() {
         main.removeCallbacks(tick)
+        main.removeCallbacks(retract)
+        animator?.cancel()
+        animator = null
         floating?.hide()
         floating = null
         hidePanel()
@@ -529,6 +672,9 @@ object BubbleController {
         }
         bubble = null
         badge = null
+        logoView = null
+        arrowView = null
+        circle = null
         params = null
     }
 }
