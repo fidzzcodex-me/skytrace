@@ -43,6 +43,7 @@ class VpnStatus {
     this.phase = VpnPhase.stopped,
     this.mode = 'vpn',
     this.paused = false,
+    this.blocked = 0,
     this.error = '',
     this.startedAt = 0,
     this.requests = 0,
@@ -54,6 +55,7 @@ class VpnStatus {
   final VpnPhase phase;
   final String mode;
   final bool paused;
+  final int blocked;
   final String error;
   final int startedAt;
   final int requests;
@@ -65,6 +67,7 @@ class VpnStatus {
         phase: phase,
         mode: mode,
         paused: paused ?? this.paused,
+        blocked: blocked,
         error: error,
         startedAt: startedAt,
         requests: requests,
@@ -83,6 +86,7 @@ class VpnStatus {
       phase: phase,
       mode: (j['mode'] ?? 'vpn') as String,
       paused: (j['paused'] ?? false) as bool,
+      blocked: ((j['blocked'] ?? 0) as num).toInt(),
       error: (j['error'] ?? '') as String,
       startedAt: ((j['startedAt'] ?? 0) as num).toInt(),
       requests: ((j['requests'] ?? 0) as num).toInt(),
@@ -135,6 +139,11 @@ class AppSettings {
   const AppSettings({
     this.targetApps = const [],
     this.bubbleEnabled = false,
+    this.adblockEnabled = false,
+    this.adblockAds = true,
+    this.adblockTrackers = true,
+    this.adblockCustom = '',
+    this.adblockAllow = '',
     this.bubbleWindow = false,
     this.monitorPort = 8080,
     this.monitorStopWithCapture = true,
@@ -164,6 +173,11 @@ class AppSettings {
 
   final List<String> targetApps;
   final bool bubbleEnabled;
+  final bool adblockEnabled;
+  final bool adblockAds;
+  final bool adblockTrackers;
+  final String adblockCustom;
+  final String adblockAllow;
   final bool bubbleWindow;
   final int monitorPort;
   final bool monitorStopWithCapture;
@@ -196,6 +210,11 @@ class AppSettings {
         monitorStopWithCapture: (m['monitorStopWithCapture'] ?? true) as bool,
         monitorPinSet: (m['monitorPinSet'] ?? false) as bool,
         bubbleEnabled: (m['bubbleEnabled'] ?? false) as bool,
+        adblockEnabled: (m['adblockEnabled'] ?? false) as bool,
+        adblockAds: (m['adblockAds'] ?? true) as bool,
+        adblockTrackers: (m['adblockTrackers'] ?? true) as bool,
+        adblockCustom: (m['adblockCustom'] ?? '') as String,
+        adblockAllow: (m['adblockAllow'] ?? '') as String,
         bubbleWindow: (m['bubbleWindow'] ?? false) as bool,
         captureMode: (m['captureMode'] ?? 'vpn') as String,
         proxyPort: ((m['proxyPort'] ?? 8888) as num).toInt(),
