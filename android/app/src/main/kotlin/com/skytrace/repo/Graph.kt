@@ -45,6 +45,7 @@ object Graph {
             replay = ReplayClient(repository, settings)
             breakpoints.timeoutSeconds = settings.breakpointTimeoutSec
             com.skytrace.bubble.BubbleController.init(app)
+            com.skytrace.adblock.AdBlock.load(app)
             initialized = true
         }
         reloadRules()
