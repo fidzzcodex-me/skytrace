@@ -74,6 +74,7 @@ class VpnPlugin :
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         appContext = binding.applicationContext
         Graph.init(appContext)
+        BubbleController.ensureService(appContext)
         methodChannel = MethodChannel(binding.binaryMessenger, "skytrace/api")
         methodChannel.setMethodCallHandler(this)
         eventChannel = EventChannel(binding.binaryMessenger, "skytrace/events")
@@ -220,11 +221,11 @@ class VpnPlugin :
             }
             "bubbleSetEnabled" -> {
                 Graph.settings.bubbleEnabled = call.argument<Boolean>("enabled") ?: false
-                BubbleController.refresh()
+                BubbleController.ensureService(appContext)
                 result.success(true)
             }
             "bubbleRefresh" -> {
-                BubbleController.refresh()
+                BubbleController.ensureService(appContext)
                 result.success(true)
             }
             "monitorStatus" -> io(result) { MonitorManager.statusMap() }
