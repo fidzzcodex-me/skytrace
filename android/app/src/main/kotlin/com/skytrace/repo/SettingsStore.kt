@@ -135,6 +135,30 @@ class SettingsStore(context: Context) {
         get() = prefs.getInt("windowH", -1)
         set(v) = prefs.edit().putInt("windowH", v).apply()
 
+    var bubbleSide: Int
+        get() = prefs.getInt("bubbleSide", 1)
+        set(v) = prefs.edit().putInt("bubbleSide", v).apply()
+
+    var adblockEnabled: Boolean
+        get() = prefs.getBoolean("adblockEnabled", false)
+        set(v) = prefs.edit().putBoolean("adblockEnabled", v).apply()
+
+    var adblockAds: Boolean
+        get() = prefs.getBoolean("adblockAds", true)
+        set(v) = prefs.edit().putBoolean("adblockAds", v).apply()
+
+    var adblockTrackers: Boolean
+        get() = prefs.getBoolean("adblockTrackers", true)
+        set(v) = prefs.edit().putBoolean("adblockTrackers", v).apply()
+
+    var adblockCustom: String
+        get() = prefs.getString("adblockCustom", "") ?: ""
+        set(v) = prefs.edit().putString("adblockCustom", v).apply()
+
+    var adblockAllow: String
+        get() = prefs.getString("adblockAllow", "") ?: ""
+        set(v) = prefs.edit().putString("adblockAllow", v).apply()
+
     var bubbleX: Int
         get() = prefs.getInt("bubbleX", -1)
         set(v) = prefs.edit().putInt("bubbleX", v).apply()
@@ -168,6 +192,11 @@ class SettingsStore(context: Context) {
         "monitorPinSet" to monitorPinHash.isNotEmpty(),
         "bubbleEnabled" to bubbleEnabled,
         "bubbleWindow" to bubbleWindow,
+        "adblockEnabled" to adblockEnabled,
+        "adblockAds" to adblockAds,
+        "adblockTrackers" to adblockTrackers,
+        "adblockCustom" to adblockCustom,
+        "adblockAllow" to adblockAllow,
         "captureMode" to captureMode,
         "proxyPort" to proxyPort,
         "proxyAuth" to proxyAuth,
@@ -196,6 +225,11 @@ class SettingsStore(context: Context) {
                 "language" -> (v as? String)?.let { language = it }
                 "monitorPort" -> (v as? Number)?.let { monitorPort = it.toInt().coerceIn(1024, 65535) }
                 "monitorStopWithCapture" -> (v as? Boolean)?.let { monitorStopWithCapture = it }
+                "adblockEnabled" -> (v as? Boolean)?.let { adblockEnabled = it }
+                "adblockAds" -> (v as? Boolean)?.let { adblockAds = it }
+                "adblockTrackers" -> (v as? Boolean)?.let { adblockTrackers = it }
+                "adblockCustom" -> (v as? String)?.let { adblockCustom = it }
+                "adblockAllow" -> (v as? String)?.let { adblockAllow = it }
                 "bubbleWindow" -> (v as? Boolean)?.let { bubbleWindow = it }
                 "bubbleEnabled" -> (v as? Boolean)?.let { bubbleEnabled = it }
                 "captureMode" -> (v as? String)?.takeIf { it == "vpn" || it == "proxy" }?.let { captureMode = it }
