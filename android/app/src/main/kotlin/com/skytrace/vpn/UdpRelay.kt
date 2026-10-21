@@ -103,6 +103,15 @@ class UdpRelay(
         val srcIp = ip.srcAddress
         val dstIp = ip.dstAddress
         val srcPort = datagram.srcPort
+        val askedName = DnsCache.questionName(query)
+        if (askedName != null && com.skytrace.adblock.AdBlock.shouldBlock(askedName)) {
+            tun.write(PacketBuilder.udp(dstIp, srcIp, 53, srcPort, DnsCache.nxdomainResponse(query)))
+            scope.launch(Dispatchers.IO) {
+                val app = com.skytrace.repo.Graph.uids.resolveUdp(srcIp, srcPort, dstIp, 53)
+                com.skytrace.adblock.AdBlock.record(askedName, "dns", 53, app, "dns")
+            }
+            return
+        }
         if (DnsCache.questionType(query) == 28) {
             val reply = DnsCache.emptyResponse(query)
             tun.write(PacketBuilder.udp(dstIp, srcIp, 53, srcPort, reply))
