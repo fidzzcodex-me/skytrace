@@ -68,6 +68,7 @@ class DashboardScreen extends ConsumerWidget {
 
     final targets = ref.watch(settingsProvider.select((s) => s.settings.targetApps));
     final mode = ref.watch(settingsProvider.select((s) => s.settings.captureMode));
+    final adblockOn = ref.watch(settingsProvider.select((s) => s.settings.adblockEnabled));
     final running = vpn.isRunning;
     final batteryExempt = ref.watch(batteryExemptProvider).valueOrNull ?? true;
     final batteryDismissed = ref.watch(batteryBannerDismissedProvider);
@@ -236,11 +237,21 @@ class DashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpacing.cardGap),
             Expanded(
-              child: StatTile(
-                icon: FontAwesomeIcons.stopwatch,
-                label: t.t('uptime'),
-                value: vpn.startedAt > 0 && running ? Fmt.duration(DateTime.now().millisecondsSinceEpoch - vpn.startedAt) : '-',
-              ).fadeInUp(index: 5),
+              child: (adblockOn
+                      ? StatTile(
+                          icon: FontAwesomeIcons.ban,
+                          label: t.t('adblock_blocked'),
+                          value: '${vpn.blocked}',
+                          color: AppColors.warningAmber,
+                        )
+                      : StatTile(
+                          icon: FontAwesomeIcons.stopwatch,
+                          label: t.t('uptime'),
+                          value: vpn.startedAt > 0 && running
+                              ? Fmt.duration(DateTime.now().millisecondsSinceEpoch - vpn.startedAt)
+                              : '-',
+                        ))
+                  .fadeInUp(index: 5),
             ),
           ],
         ),
