@@ -5,6 +5,7 @@ import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 
 Color statusColor(TrafficSummary t) {
+  if (t.blocked) return AppColors.warningAmber;
   if (t.isFailed) return AppColors.errorRed;
   if (t.tunnel) return AppColors.textSecondary;
   if (t.isPending) return AppColors.textSecondary;
@@ -32,7 +33,9 @@ class StatusBadge extends StatelessWidget {
   final Color color;
 
   factory StatusBadge.forTraffic(TrafficSummary t) {
-    final label = t.isFailed
+    final label = t.blocked
+        ? 'BLOCK'
+        : t.isFailed
         ? 'ERR'
         : t.tunnel
             ? 'TUN'
