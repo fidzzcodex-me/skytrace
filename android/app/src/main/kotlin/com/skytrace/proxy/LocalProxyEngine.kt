@@ -1,5 +1,6 @@
 package com.skytrace.proxy
 
+import com.skytrace.adblock.AdBlock
 import com.skytrace.repo.Graph
 import com.skytrace.repo.TrafficEntity
 import com.skytrace.rule.BreakpointDecision
@@ -110,6 +111,11 @@ class LocalProxyEngine(
         if (looksTls) {
             val sni = TlsInterceptor.parseSni(first)
             val hostKey = sni ?: label
+            if (AdBlock.shouldBlock(hostKey)) {
+                AdBlock.record(hostKey, "https", session.dstPort, app, "sni")
+                session.reset()
+                return
+            }
             if (!Graph.settings.tlsInterception || bypass.contains(hostKey) || userBypass(hostKey)) {
                 tunnel(PrefixedTransport(first, session), session.dstIp, session.dstPort, hostKey, "tls", app, bypassReason(hostKey))
                 return
@@ -191,6 +197,11 @@ class LocalProxyEngine(
                 val (host, port) = parseHostPort(head.target, "", 443)
                 if (host.isEmpty()) {
                     writeSimple(transport, 400, "Bad Request", "SkyTrace proxy: missing CONNECT target")
+                    return
+                }
+                if (AdBlock.shouldBlock(host)) {
+                    AdBlock.record(host, "https", port, app, "connect")
+                    writeSimple(transport, 403, "Forbidden", "Blocked by the SkyTrace ad and tracker filter")
                     return
                 }
                 transport.write("HTTP/1.1 200 Connection Established\r\n\r\n".toByteArray())
@@ -361,6 +372,11 @@ class LocalProxyEngine(
             }
         }
         val (hostName, port) = parseHostPort(head.headers.headerValue("Host"), c.hostLabel, c.dstPort)
+        if (AdBlock.shouldBlock(hostName)) {
+            AdBlock.record(hostName, c.scheme, port, c.app, "http")
+            writeSimple(c.client, 403, "Forbidden", "Blocked by the SkyTrace ad and tracker filter")
+            return false
+        }
 
         val expect = head.headers.headerValue("Expect")
         if (expect != null && expect.contains("100-continue", true) &&
