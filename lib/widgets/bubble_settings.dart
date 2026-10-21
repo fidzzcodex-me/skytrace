@@ -37,6 +37,7 @@ class _BubbleSettingsCardState extends ConsumerState<BubbleSettingsCard> with Wi
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ref.invalidate(bubbleSupportProvider);
+      ref.read(settingsProvider.notifier).load();
       ref.read(trafficRepositoryProvider).bubbleRefresh();
     }
   }
