@@ -144,7 +144,7 @@ class _TrafficDetailScreenState extends ConsumerState<TrafficDetailScreen> {
             ),
           );
         }
-        final canReplay = !d.tunnel && !d.isWebSocket && d.method != 'TLS';
+        final canReplay = !d.tunnel && !d.isWebSocket && d.method != 'TLS' && d.method != 'BLOCKED';
         return DefaultTabController(
           length: 5,
           child: Scaffold(
@@ -362,6 +362,25 @@ class _OverviewTab extends StatelessWidget {
             ],
           ),
         ).fadeInUp(),
+        if (d.method == 'BLOCKED') ...[
+          const SizedBox(height: AppSpacing.cardGap),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.page),
+            decoration: BoxDecoration(
+              color: AppColors.warningAmber.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.warningAmber.withValues(alpha: 0.45)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const FaIcon(FontAwesomeIcons.ban, size: 15, color: AppColors.warningAmber),
+                const SizedBox(width: 10),
+                Expanded(child: Text(t.t('blocked_note'), style: AppText.caption(p).copyWith(fontSize: 12.5))),
+              ],
+            ),
+          ).fadeInUp(index: 1),
+        ],
         if (d.possiblePinning) ...[
           const SizedBox(height: AppSpacing.cardGap),
           Container(
