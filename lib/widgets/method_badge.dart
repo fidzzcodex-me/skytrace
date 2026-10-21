@@ -15,6 +15,8 @@ Color methodColor(String method) {
       return AppColors.deepBlue;
     case 'DELETE':
       return AppColors.errorRed;
+    case 'BLOCKED':
+      return AppColors.warningAmber;
     default:
       return AppColors.textSecondary;
   }
