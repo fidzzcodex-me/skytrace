@@ -48,6 +48,28 @@ object DnsCache {
         }
     }
 
+    fun questionName(query: ByteArray): String? {
+        return try {
+            if (query.size < 12 || query.u16(4) < 1) return null
+            readName(query, 12).first.lowercase()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun nxdomainResponse(query: ByteArray): ByteArray {
+        val out = query.copyOf()
+        out[2] = (0x81).toByte()
+        out[3] = (0x83).toByte()
+        out[6] = 0
+        out[7] = 0
+        out[8] = 0
+        out[9] = 0
+        out[10] = 0
+        out[11] = 0
+        return out
+    }
+
     fun emptyResponse(query: ByteArray): ByteArray {
         val out = query.copyOf()
         out[2] = (0x81).toByte()
