@@ -117,13 +117,24 @@ Keamanan:
 
 Saat capture aktif, SkyTrace bisa menampilkan bubble kecil di atas aplikasi lain supaya kamu tahu capture masih berjalan.
 
-- Aktifkan di Setelan, bagian Bubble mengambang. Default mati
+- Aktifkan di Setelan, bagian Bubble mengambang. Default mati. Setelah dinyalakan, bubble permanen sampai dimatikan (tidak bergantung capture, kembali aktif setelah restart)
+- Bubble bersembunyi di tepi layar: geser ke dalam untuk mengeluarkan, ketuk untuk membuka, tarik ke tanda X untuk mematikan
 - Status ditampilkan jelas: Didukung, Perlu izin (ada tombol ke Settings), atau Bubble tidak didukung di perangkat ini (toggle dinonaktifkan)
 - Geser untuk memindahkan (posisi tersimpan), ketuk untuk panel mini, tekan lama atau tarik ke tanda X untuk menyembunyikan sampai capture berikutnya
 - Secara default bubble hanya berisi ikon dan jumlah request baru, tanpa URL atau isi traffic
 - Opsi jendela mengambang (default mati): ketuk bubble untuk membuka seluruh aplikasi dalam jendela yang bisa dipindah dan diubah ukurannya, lengkap dengan daftar traffic live dan detail. Jendela ini menampilkan URL dan isi traffic, jadi nyalakan hanya di perangkat yang kamu percaya. Jendela memakai mesin Flutter kedua yang hanya hidup selama jendela terbuka
 - Di Xiaomi, Oppo, Vivo, Huawei, dan beberapa merek lain, aktifkan juga izin tambahan seperti "Tampilkan jendela pop-up saat berjalan di latar belakang"
 - Badge diperbarui paling cepat tiap 2 detik dan melambat saat layar mati, supaya hemat baterai
+
+## Pemblokir iklan dan pelacak
+
+Opsional dan default mati. Saat dinyalakan, SkyTrace memblokir domain iklan dan pelacak selama capture:
+
+- Mode VPN: query DNS domain terblokir dijawab NXDOMAIN, dan koneksi TLS dengan SNI terblokir diputus (menutup celah DNS terenkripsi dan IP langsung)
+- Mode proxy: CONNECT dan request HTTP ke host terblokir dijawab 403
+- Daftar bawaan berisi domain iklan dan pelacak populer. Kamu bisa menambah daftar blokir sendiri dan daftar pengecualian dengan wildcard
+- Request yang diblokir tetap dicatat (tag BLOCK, maksimal satu entri per domain per menit) supaya kamu tahu apa yang diblokir
+- Batasannya: ini bukan pengganti AdGuard. Iklan dari domain yang sama dengan konten tidak bisa diblokir, tidak ada filter kosmetik, dan daftar bawaan sengaja ringkas. Pemblokiran bisa mengubah perilaku aplikasi yang kamu uji, jadi matikan saat men-debug analytics atau iklan
 
 ## Popup update
 
