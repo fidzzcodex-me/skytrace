@@ -9,9 +9,11 @@ import com.skytrace.proxy.statusReason
 import com.skytrace.util.Logger
 import com.skytrace.util.globToRegex
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.GZIPInputStream
+import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
 
 class RequestOutcome(
@@ -184,6 +186,49 @@ class RewriteEngine {
     }
 
     companion object {
+        private fun drain(stream: java.io.InputStream): ByteArray {
+            val out = ByteArrayOutputStream()
+            val buf = ByteArray(8192)
+            try {
+                while (true) {
+                    val n = stream.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                }
+            } catch (e: Exception) {
+                Logger.d("body decode stopped early")
+            }
+            try {
+                stream.close()
+            } catch (e: Exception) {
+                Logger.d("body stream close failed")
+            }
+            return out.toByteArray()
+        }
+
+        fun decodeLenient(body: ByteArray, encoding: String): ByteArray? {
+            if (encoding.isEmpty() || encoding == "identity") return body
+            if (body.isEmpty()) return body
+            return when {
+                encoding.contains("gzip") -> {
+                    val result = try {
+                        drain(GZIPInputStream(ByteArrayInputStream(body)))
+                    } catch (e: Exception) {
+                        ByteArray(0)
+                    }
+                    if (result.isEmpty()) null else result
+                }
+                encoding.contains("deflate") -> {
+                    var result = drain(InflaterInputStream(ByteArrayInputStream(body)))
+                    if (result.isEmpty()) {
+                        result = drain(InflaterInputStream(ByteArrayInputStream(body), Inflater(true)))
+                    }
+                    if (result.isEmpty()) null else result
+                }
+                else -> null
+            }
+        }
+
         fun decodeBody(body: ByteArray, encoding: String): ByteArray? {
             return try {
                 when {
