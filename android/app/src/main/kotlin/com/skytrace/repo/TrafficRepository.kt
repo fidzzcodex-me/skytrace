@@ -306,7 +306,7 @@ class TrafficRepository(context: Context) {
         var bytes = body ?: ByteArray(0)
         var undecodable = false
         if (bytes.isNotEmpty() && encoding.isNotEmpty() && encoding != "identity") {
-            val decoded = RewriteEngine.decodeBody(bytes, encoding)
+            val decoded = RewriteEngine.decodeLenient(bytes, encoding)
             if (decoded == null) undecodable = true else bytes = decoded
         }
         val text = !undecodable && (looksLikeText(contentType) || (contentType.isEmpty() && isPrintable(bytes)) || isPrintable(bytes))
@@ -333,17 +333,31 @@ class TrafficRepository(context: Context) {
         return bad * 20 < n
     }
 
+    private fun encodingOf(headers: List<Header>): String =
+        headers.firstOrNull { it.name.equals("Content-Encoding", true) }?.value?.lowercase() ?: ""
+
+    private fun decodedBody(body: ByteArray, headers: List<Header>): ByteArray? =
+        RewriteEngine.decodeLenient(body, encodingOf(headers))
+
+    fun bodyAsText(body: ByteArray?, headers: List<Header>, contentType: String): String {
+        val bytes = body ?: return ""
+        if (bytes.isEmpty()) return ""
+        val decoded = decodedBody(bytes, headers)
+            ?: return "[body terkompresi (${encodingOf(headers)}), ${bytes.size} bytes]"
+        return if (looksLikeText(contentType) || isPrintable(decoded)) String(decoded, Charsets.UTF_8) else "[binary ${decoded.size} bytes]"
+    }
+
     private fun rawText(e: TrafficEntity, req: List<Header>, res: List<Header>): String {
         val sb = StringBuilder()
         sb.append("${e.method} ${e.path} ${e.httpVersion.ifEmpty { "HTTP/1.1" }}\r\n")
         req.forEach { sb.append("${it.name}: ${it.value}\r\n") }
         sb.append("\r\n")
-        e.requestBody?.let { b -> if (looksLikeText(e.requestContentType) || isPrintable(b)) sb.append(String(b, Charsets.UTF_8)) }
+        sb.append(bodyAsText(e.requestBody, req, e.requestContentType))
         sb.append("\r\n\r\n")
         sb.append("${e.httpVersion.ifEmpty { "HTTP/1.1" }} ${e.statusCode} ${e.statusMessage}\r\n")
         res.forEach { sb.append("${it.name}: ${it.value}\r\n") }
         sb.append("\r\n")
-        e.responseBody?.let { b -> if (looksLikeText(e.responseContentType) || isPrintable(b)) sb.append(String(b, Charsets.UTF_8)) }
+        sb.append(bodyAsText(e.responseBody, res, e.responseContentType))
         return sb.toString()
     }
 
@@ -427,7 +441,7 @@ class TrafficRepository(context: Context) {
                                 if (body != null && body.isNotEmpty()) {
                                     put("postData", buildJsonObject {
                                         put("mimeType", e.requestContentType)
-                                        put("text", String(body, Charsets.UTF_8))
+                                        put("text", bodyAsText(body, reqH, e.requestContentType))
                                     })
                                 }
                             })
@@ -442,7 +456,7 @@ class TrafficRepository(context: Context) {
                                     put("mimeType", e.responseContentType)
                                     val rb = e.responseBody ?: ByteArray(0)
                                     val enc = resH.firstOrNull { it.name.equals("Content-Encoding", true) }?.value?.lowercase() ?: ""
-                                    val decoded = if (rb.isEmpty()) rb else RewriteEngine.decodeBody(rb, enc)
+                                    val decoded = if (rb.isEmpty()) rb else RewriteEngine.decodeLenient(rb, enc)
                                     if (decoded != null && (looksLikeText(e.responseContentType) || isPrintable(decoded))) {
                                         put("text", String(decoded, Charsets.UTF_8))
                                     } else if (rb.isNotEmpty()) {
@@ -484,14 +498,20 @@ class TrafficRepository(context: Context) {
 
     fun curlFor(e: TrafficEntity): String {
         val sb = StringBuilder("curl -X ${e.method} ${shellQuote(e.url)}")
-        headersOf(e.requestHeaders).forEach {
+        val reqHeaders = headersOf(e.requestHeaders)
+        val raw = e.requestBody
+        val decoded = if (raw != null && raw.isNotEmpty()) decodedBody(raw, reqHeaders) else null
+        val encoding = encodingOf(reqHeaders)
+        val sendsDecoded = decoded != null && encoding.isNotEmpty() && encoding != "identity"
+        reqHeaders.forEach {
             if (it.name.equals("Content-Length", true) || it.name.equals("Host", true)) return@forEach
+            if (sendsDecoded && it.name.equals("Content-Encoding", true)) return@forEach
             sb.append(" \\\n  -H ").append(shellQuote("${it.name}: ${it.value}"))
         }
-        val body = e.requestBody
-        if (body != null && body.isNotEmpty()) {
-            if (looksLikeText(e.requestContentType) || isPrintable(body)) {
-                sb.append(" \\\n  --data-raw ").append(shellQuote(String(body, Charsets.UTF_8)))
+        val data = decoded ?: raw
+        if (data != null && data.isNotEmpty()) {
+            if (looksLikeText(e.requestContentType) || isPrintable(data)) {
+                sb.append(" \\\n  --data-raw ").append(shellQuote(String(data, Charsets.UTF_8)))
             } else {
                 sb.append(" \\\n  --data-binary ").append(shellQuote("@body.bin"))
             }
