@@ -2,6 +2,13 @@
 
 Format mengikuti Keep a Changelog dan versi mengikuti Semantic Versioning.
 
+## [1.6.1]
+
+### Diperbaiki
+
+- Tab Raw, ekspor HAR, cURL, dan ekspor Raw kini mendekompresi body gzip dan deflate seperti tab Request dan Response, sehingga tidak lagi menampilkan karakter acak. Body yang terpotong batas ukuran tetap ditampilkan sebagian. Body dengan kompresi yang tidak didukung (misalnya brotli) tampil sebagai keterangan, bukan sampah
+- cURL tidak lagi menyertakan header Content-Encoding bila body-nya sudah didekompresi
+
 ## [1.6.0]
 
 ### Ditambahkan
