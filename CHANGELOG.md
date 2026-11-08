@@ -2,6 +2,13 @@
 
 Format mengikuti Keep a Changelog dan versi mengikuti Semantic Versioning.
 
+## [1.6.2]
+
+### Diperbaiki
+
+- Detail request tidak lagi gagal dengan pesan "Row too big to fit into CursorWindow" pada body besar. Body dibaca per potongan 512 KB sehingga aman untuk baris yang sudah tersimpan juga. Ekspor memakai jalur yang sama
+- Batas ukuran body tersimpan di Setelan dibatasi maksimal 8 MB agar detail tetap ringan
+
 ## [1.6.1]
 
 ### Diperbaiki
