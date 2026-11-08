@@ -150,6 +150,21 @@ interface TrafficDao {
     @RawQuery
     suspend fun countRaw(query: SupportSQLiteQuery): Int
 
+    @RawQuery
+    suspend fun idsRaw(query: SupportSQLiteQuery): List<Long>
+
+    @Query("SELECT length(requestBody) FROM traffic WHERE id = :id")
+    suspend fun requestBodyLength(id: Long): Int?
+
+    @Query("SELECT substr(requestBody, :start, :len) FROM traffic WHERE id = :id")
+    suspend fun requestBodyChunk(id: Long, start: Int, len: Int): ByteArray?
+
+    @Query("SELECT length(responseBody) FROM traffic WHERE id = :id")
+    suspend fun responseBodyLength(id: Long): Int?
+
+    @Query("SELECT substr(responseBody, :start, :len) FROM traffic WHERE id = :id")
+    suspend fun responseBodyChunk(id: Long, start: Int, len: Int): ByteArray?
+
     @Query("SELECT appPackage, appName, COUNT(*) AS requests FROM traffic GROUP BY appPackage ORDER BY requests DESC")
     suspend fun appFacets(): List<AppFacet>
 
