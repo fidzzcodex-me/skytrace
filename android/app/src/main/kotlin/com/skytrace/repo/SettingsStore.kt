@@ -213,7 +213,7 @@ class SettingsStore(context: Context) {
                 "dns" -> (v as? String)?.takeIf { it.isNotBlank() }?.let { dns = it.trim() }
                 "connectTimeoutMs" -> (v as? Number)?.let { connectTimeoutMs = it.toInt().coerceIn(1000, 120000) }
                 "readTimeoutMs" -> (v as? Number)?.let { readTimeoutMs = it.toInt().coerceIn(1000, 300000) }
-                "maxBodyKb" -> (v as? Number)?.let { maxBodyKb = it.toInt().coerceIn(16, 32768) }
+                "maxBodyKb" -> (v as? Number)?.let { maxBodyKb = it.toInt().coerceIn(16, 8192) }
                 "maxEntries" -> (v as? Number)?.let { maxEntries = it.toInt().coerceIn(100, 100000) }
                 "blockQuic" -> (v as? Boolean)?.let { blockQuic = it }
                 "tlsInterception" -> (v as? Boolean)?.let { tlsInterception = it }
