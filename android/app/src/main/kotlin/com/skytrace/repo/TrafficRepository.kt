@@ -59,6 +59,12 @@ class TrafficFilter(
     }
 }
 
+private const val NO_BLOB_COLUMNS =
+    "id, timestamp, method, scheme, host, port, path, url, httpVersion, statusCode, statusMessage, " +
+        "requestHeaders, responseHeaders, NULL AS requestBody, NULL AS responseBody, requestSize, responseSize, " +
+        "requestContentType, responseContentType, requestTruncated, responseTruncated, appPackage, appName, uid, " +
+        "remoteIp, connectMs, tlsMs, sendMs, waitMs, receiveMs, totalMs, error, isWebSocket, tunnel, modified, replayOf"
+
 class TrafficRepository(context: Context) {
     private val db: SkyDatabase = Room.databaseBuilder(context.applicationContext, SkyDatabase::class.java, "skytrace.db")
         .fallbackToDestructiveMigration()
@@ -97,7 +103,25 @@ class TrafficRepository(context: Context) {
         EventBus.emit("traffic_update", summaryJson(entity))
     }
 
-    suspend fun get(id: Long): TrafficEntity? = dao.byId(id)
+    suspend fun get(id: Long): TrafficEntity? {
+        val base = dao.entities(
+            SimpleSQLiteQuery("SELECT $NO_BLOB_COLUMNS FROM traffic WHERE id = ?", arrayOf<Any?>(id))
+        ).firstOrNull() ?: return null
+        base.requestBody = readBlob(id, true)
+        base.responseBody = readBlob(id, false)
+        return base
+    }
+
+    private suspend fun readBlob(id: Long, request: Boolean): ByteArray? {
+        val total = (if (request) dao.requestBodyLength(id) else dao.responseBodyLength(id)) ?: return null
+        if (total <= 0) return ByteArray(0)
+        val out = java.io.ByteArrayOutputStream()
+        for ((start, len) in BlobChunks.plan(total)) {
+            val part = (if (request) dao.requestBodyChunk(id, start, len) else dao.responseBodyChunk(id, start, len)) ?: break
+            out.write(part)
+        }
+        return out.toByteArray()
+    }
 
     suspend fun clear() {
         dao.deleteAll()
@@ -139,12 +163,18 @@ class TrafficRepository(context: Context) {
     }
 
     suspend fun entities(filter: TrafficFilter, ids: List<Long>?): List<TrafficEntity> {
-        if (ids != null && ids.isNotEmpty()) {
+        val wanted: List<Long> = if (ids != null && ids.isNotEmpty()) {
             val marks = ids.joinToString(",") { "?" }
-            return dao.entities(SimpleSQLiteQuery("SELECT * FROM traffic WHERE id IN ($marks) ORDER BY id ASC", ids.map { it as Any? }.toTypedArray()))
+            dao.idsRaw(
+                SimpleSQLiteQuery("SELECT id FROM traffic WHERE id IN ($marks) ORDER BY id ASC", ids.map { it as Any? }.toTypedArray())
+            )
+        } else {
+            val (where, args) = buildWhere(filter)
+            dao.idsRaw(SimpleSQLiteQuery("SELECT id FROM traffic $where ORDER BY id ASC LIMIT 20000", args.toTypedArray()))
         }
-        val (where, args) = buildWhere(filter)
-        return dao.entities(SimpleSQLiteQuery("SELECT * FROM traffic $where ORDER BY id ASC LIMIT 20000", args.toTypedArray()))
+        val out = ArrayList<TrafficEntity>(wanted.size)
+        for (id in wanted) get(id)?.let { out.add(it) }
+        return out
     }
 
     private fun buildWhere(f: TrafficFilter): Pair<String, List<Any?>> {
