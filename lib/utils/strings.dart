@@ -337,6 +337,15 @@ const Map<String, List<String>> _table = {
   'blocked_note': ['Request ini diblokir oleh filter iklan dan pelacak SkyTrace. Tambahkan domainnya ke pengecualian bila perlu.', 'This request was blocked by the SkyTrace ad and tracker filter. Add the domain to exceptions if needed.'],
   'allow_domain': ['Izinkan domain ini', 'Allow this domain'],
   'block_domain': ['Blokir domain ini', 'Block this domain'],
+  'tls_title': ['Intercept TLS', 'TLS interception'],
+  'bypass_apps_title': ['Aplikasi tanpa intercept', 'Apps without interception'],
+  'bypass_apps_note': ['Koneksi HTTPS aplikasi ini langsung diteruskan tanpa dekripsi, jadi tidak ada error sertifikat. Berlaku untuk koneksi baru tanpa perlu memulai ulang capture.', 'HTTPS connections from these apps are passed through without decryption, so there are no certificate errors. Applies to new connections without restarting capture.'],
+  'bypass_apps_none': ['Tidak ada', 'None'],
+  'learned_title': ['Host yang dipelajari otomatis', 'Auto-learned hosts'],
+  'learned_hint': ['Host yang menolak sertifikat diingat dan langsung di-tunnel, juga setelah capture dimulai ulang. Ketuk untuk menghapus semuanya.', 'Hosts that rejected the certificate are remembered and tunneled right away, even after capture restarts. Tap to clear them all.'],
+  'learned_clear_confirm': ['Hapus semua host yang dipelajari? Host itu akan dicoba di-intercept lagi.', 'Clear all learned hosts? They will be intercepted again.'],
+  'pin_bypass_app': ['Tunnel aplikasi ini tanpa intercept', 'Tunnel this app without interception'],
+  'pin_bypass_done': ['Aplikasi ditambahkan ke daftar tanpa intercept', 'App added to the no-intercept list'],
   'ws_note': ['Log frame WebSocket', 'WebSocket frame log'],
 };
 
