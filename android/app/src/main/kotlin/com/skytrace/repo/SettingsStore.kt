@@ -135,6 +135,18 @@ class SettingsStore(context: Context) {
         get() = prefs.getInt("windowH", -1)
         set(v) = prefs.edit().putInt("windowH", v).apply()
 
+    var bypassApps: Set<String>
+        get() = prefs.getStringSet("bypassApps", emptySet())?.toSet() ?: emptySet()
+        set(v) = prefs.edit().putStringSet("bypassApps", v.toSet()).apply()
+
+    var learnedBypass: Set<String>
+        get() = prefs.getStringSet("learnedBypass", emptySet())?.toSet() ?: emptySet()
+        set(v) = prefs.edit().putStringSet("learnedBypass", v.toSet()).apply()
+
+    var learnedBypassVersion: Int
+        get() = prefs.getInt("learnedBypassVersion", 0)
+        set(v) = prefs.edit().putInt("learnedBypassVersion", v).apply()
+
     var bubbleSide: Int
         get() = prefs.getInt("bubbleSide", 1)
         set(v) = prefs.edit().putInt("bubbleSide", v).apply()
@@ -192,6 +204,8 @@ class SettingsStore(context: Context) {
         "monitorPinSet" to monitorPinHash.isNotEmpty(),
         "bubbleEnabled" to bubbleEnabled,
         "bubbleWindow" to bubbleWindow,
+        "bypassApps" to bypassApps.toList(),
+        "learnedBypassCount" to learnedBypass.size,
         "adblockEnabled" to adblockEnabled,
         "adblockAds" to adblockAds,
         "adblockTrackers" to adblockTrackers,
@@ -230,6 +244,7 @@ class SettingsStore(context: Context) {
                 "adblockTrackers" -> (v as? Boolean)?.let { adblockTrackers = it }
                 "adblockCustom" -> (v as? String)?.let { adblockCustom = it }
                 "adblockAllow" -> (v as? String)?.let { adblockAllow = it }
+                "bypassApps" -> (v as? List<*>)?.let { list -> bypassApps = list.filterIsInstance<String>().toSet() }
                 "bubbleWindow" -> (v as? Boolean)?.let { bubbleWindow = it }
                 "bubbleEnabled" -> (v as? Boolean)?.let { bubbleEnabled = it }
                 "captureMode" -> (v as? String)?.takeIf { it == "vpn" || it == "proxy" }?.let { captureMode = it }
