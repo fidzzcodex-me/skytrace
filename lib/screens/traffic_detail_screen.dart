@@ -402,6 +402,23 @@ class _OverviewTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(t.t('pin_body'), style: AppText.caption(p).copyWith(fontSize: 12.5)),
+                const SizedBox(height: 12),
+                Consumer(
+                  builder: (context, ref, _) => SkyButton(
+                    label: t.t('pin_bypass_app'),
+                    secondary: true,
+                    icon: const FaIcon(FontAwesomeIcons.lock),
+                    onPressed: d.appPackage.isEmpty
+                        ? null
+                        : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final current = ref.read(settingsProvider).settings.bypassApps;
+                            final next = {...current, d.appPackage};
+                            await ref.read(settingsProvider.notifier).update({'bypassApps': next.toList()});
+                            messenger.showSnackBar(SnackBar(content: Text(t.t('pin_bypass_done')), duration: const Duration(seconds: 1)));
+                          },
+                  ),
+                ),
               ],
             ),
           ).fadeInUp(index: 1),
