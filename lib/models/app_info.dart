@@ -139,6 +139,8 @@ class AppSettings {
   const AppSettings({
     this.targetApps = const [],
     this.bubbleEnabled = false,
+    this.bypassApps = const [],
+    this.learnedBypassCount = 0,
     this.adblockEnabled = false,
     this.adblockAds = true,
     this.adblockTrackers = true,
@@ -173,6 +175,8 @@ class AppSettings {
 
   final List<String> targetApps;
   final bool bubbleEnabled;
+  final List<String> bypassApps;
+  final int learnedBypassCount;
   final bool adblockEnabled;
   final bool adblockAds;
   final bool adblockTrackers;
@@ -210,6 +214,8 @@ class AppSettings {
         monitorStopWithCapture: (m['monitorStopWithCapture'] ?? true) as bool,
         monitorPinSet: (m['monitorPinSet'] ?? false) as bool,
         bubbleEnabled: (m['bubbleEnabled'] ?? false) as bool,
+        bypassApps: ((m['bypassApps'] ?? const []) as List).map((e) => e.toString()).toList(),
+        learnedBypassCount: ((m['learnedBypassCount'] ?? 0) as num).toInt(),
         adblockEnabled: (m['adblockEnabled'] ?? false) as bool,
         adblockAds: (m['adblockAds'] ?? true) as bool,
         adblockTrackers: (m['adblockTrackers'] ?? true) as bool,
