@@ -212,6 +212,11 @@ class VpnPlugin :
                     result.success(false)
                 }
             }
+            "learnedBypassClear" -> io(result) {
+                Graph.settings.learnedBypass = emptySet()
+                Graph.settings.learnedBypassVersion = Graph.settings.learnedBypassVersion + 1
+                true
+            }
             "trafficDeleteFiltered" -> io(result) {
                 Graph.repository.deleteFiltered(TrafficFilter.fromMap(call.argument<Map<String, Any?>>("filter")))
             }
