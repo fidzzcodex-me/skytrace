@@ -98,10 +98,33 @@ class LocalProxyEngine(
         }
     }
 
-    fun clearBypass() = bypass.clear()
+    private var learnedSeen = -1
+
+    private fun syncLearned() {
+        val version = Graph.settings.learnedBypassVersion
+        if (version == learnedSeen) return
+        bypass.clear()
+        bypass.addAll(Graph.settings.learnedBypass)
+        learnedSeen = version
+    }
+
+    private fun learn(host: String) {
+        if (!bypass.add(host)) return
+        if (bypass.size > 500) {
+            bypass.clear()
+            bypass.add(host)
+        }
+        Graph.settings.learnedBypass = bypass.toSet()
+    }
+
+    fun clearBypass() {
+        bypass.clear()
+        Graph.settings.learnedBypass = emptySet()
+    }
 
     private suspend fun serve(session: TcpSession) {
         val first = session.read() ?: return
+        syncLearned()
         val dstIp = session.dstIp.toIpString()
         val app = Graph.uids.resolveTcp(session.srcIp, session.srcPort, session.dstIp, session.dstPort)
         val dnsHost = DnsCache.hostFor(session.dstIp)
@@ -116,6 +139,10 @@ class LocalProxyEngine(
                 session.reset()
                 return
             }
+            if (Graph.settings.bypassApps.contains(app.packageName)) {
+                tunnel(PrefixedTransport(first, session), session.dstIp, session.dstPort, hostKey, "tls", app, "bypass-app")
+                return
+            }
             if (!Graph.settings.tlsInterception || bypass.contains(hostKey) || userBypass(hostKey)) {
                 tunnel(PrefixedTransport(first, session), session.dstIp, session.dstPort, hostKey, "tls", app, bypassReason(hostKey))
                 return
@@ -125,7 +152,7 @@ class LocalProxyEngine(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                bypass.add(hostKey)
+                learn(hostKey)
                 recordTlsFailure(hostKey, session.dstPort, session.dstIp, app, e)
                 session.reset()
                 return
@@ -222,6 +249,7 @@ class LocalProxyEngine(
     }
 
     private suspend fun serveTunneledStream(transport: ByteTransport, first: ByteArray, host: String, port: Int, app: AppIdentity) {
+        syncLearned()
         val looksTls = first.size >= 3 && first[0].u8() == 0x16 && first[1].u8() == 0x03
         if (looksTls) {
             val sni = TlsInterceptor.parseSni(first)
@@ -235,7 +263,7 @@ class LocalProxyEngine(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                bypass.add(hostKey)
+                learn(hostKey)
                 recordTlsFailure(hostKey, port, null, app, e)
                 return
             }
