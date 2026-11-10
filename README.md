@@ -264,7 +264,7 @@ curl -X POST 'https://api.example.com/v1/login' \
 | Entri bermetode TLS dengan error handshake | Klien menolak CA | Sama seperti di atas. Koneksi berikutnya ke host itu otomatis diteruskan tanpa dekripsi |
 | Tidak ada traffic sama sekali | VPN lain aktif, atau service dihentikan sistem | Buka Setelan, Diagnostik, lalu ikuti item yang berwarna kuning atau merah |
 | Tombol start gagal | Izin VPN ditolak | Ketuk lagi dan setujui dialog VPN |
-| Lencana "Possible pinning" muncul | Aplikasi menolak sertifikat SkyTrace | Ikuti saran di halaman detail: pasang CA, tambahkan debug-overrides, nonaktifkan pinning pada build debug |
+| Lencana "Possible pinning" muncul | Aplikasi menolak sertifikat SkyTrace | Ikuti saran di halaman detail: pasang CA, tambahkan debug-overrides, nonaktifkan pinning pada build debug. Bila isinya tidak perlu dibaca, tambahkan aplikasinya ke Aplikasi tanpa intercept di Setelan agar tidak error |
 | Izin overlay ditolak dengan pesan "Aplikasi tidak diberi akses" | Setelan terbatas Android 13 ke atas untuk APK yang dipasang langsung | Info aplikasi SkyTrace, titik tiga, Izinkan setelan terbatas, lalu beri izin lagi |
 | Capture mati sendiri di latar belakang | Penghemat baterai sistem | Ikuti panduan di Beranda: Setelan, Aplikasi, SkyTrace, Baterai, Tanpa batasan |
 | Live Monitor tidak bisa dibuka dari PC | PC dan HP beda jaringan, atau port dipakai | Pastikan satu WiFi, cek status di aplikasi, dan ganti port bila perlu |
