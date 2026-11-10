@@ -16,14 +16,19 @@ import '../widgets/loading_shimmer.dart';
 import '../widgets/sky_button.dart';
 
 class TargetAppsScreen extends ConsumerStatefulWidget {
-  const TargetAppsScreen({super.key});
+  const TargetAppsScreen({super.key, this.bypass = false});
+
+  final bool bypass;
 
   @override
   ConsumerState<TargetAppsScreen> createState() => _TargetAppsScreenState();
 }
 
 class _TargetAppsScreenState extends ConsumerState<TargetAppsScreen> {
-  late final Set<String> _selected = ref.read(settingsProvider).settings.targetApps.toSet();
+  late final Set<String> _selected = (widget.bypass
+          ? ref.read(settingsProvider).settings.bypassApps
+          : ref.read(settingsProvider).settings.targetApps)
+      .toSet();
   final TextEditingController _search = TextEditingController();
   bool _includeSystem = false;
   bool _saving = false;
@@ -53,8 +58,8 @@ class _TargetAppsScreenState extends ConsumerState<TargetAppsScreen> {
     final vpn = ref.read(vpnProvider.notifier);
     final wasRunning = ref.read(vpnProvider).isRunning;
     setState(() => _saving = true);
-    await ref.read(settingsProvider.notifier).update({'targetApps': _selected.toList()});
-    if (wasRunning) {
+    await ref.read(settingsProvider.notifier).update({(widget.bypass ? 'bypassApps' : 'targetApps'): _selected.toList()});
+    if (wasRunning && !widget.bypass) {
       await vpn.stop();
       await Future<void>.delayed(const Duration(milliseconds: 900));
       await vpn.start();
@@ -71,7 +76,7 @@ class _TargetAppsScreenState extends ConsumerState<TargetAppsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.t('target_title')),
+        title: Text(widget.bypass ? t.t('bypass_apps_title') : t.t('target_title')),
         actions: [
           TextButton(
             onPressed: _selected.isEmpty ? null : () => setState(_selected.clear),
@@ -111,7 +116,7 @@ class _TargetAppsScreenState extends ConsumerState<TargetAppsScreen> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                _selected.isEmpty ? t.t('target_all') : '${_selected.length} ${t.t('target_count')}',
+                _selected.isEmpty ? (widget.bypass ? t.t('bypass_apps_none') : t.t('target_all')) : '${_selected.length} ${t.t('target_count')}',
                 style: AppText.bodyMedium(p).copyWith(color: p.brandStrong),
               ),
             ),
@@ -188,7 +193,7 @@ class _TargetAppsScreenState extends ConsumerState<TargetAppsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(t.t('target_note'), style: AppText.label(p), textAlign: TextAlign.center),
+                  Text(widget.bypass ? t.t('bypass_apps_note') : t.t('target_note'), style: AppText.label(p), textAlign: TextAlign.center),
                   const SizedBox(height: 10),
                   SkyButton(label: t.t('save'), expand: true, loading: _saving, onPressed: _save),
                 ],
