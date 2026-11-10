@@ -2,6 +2,13 @@
 
 Format mengikuti Keep a Changelog dan versi mengikuti Semantic Versioning.
 
+## [1.6.3]
+
+### Ditambahkan
+
+- Aplikasi tanpa intercept: pilih aplikasi yang HTTPS-nya langsung diteruskan tanpa dekripsi (Setelan, Intercept TLS), supaya aplikasi dengan certificate pinning tidak mengalami error pertama. Berlaku untuk koneksi baru tanpa memulai ulang capture. Tersedia juga tombol langsung di kartu "Possible pinning" pada halaman detail
+- Host yang menolak sertifikat kini diingat permanen, bukan hanya selama capture berjalan, sehingga tidak gagal lagi setelah capture atau HP dimulai ulang. Daftarnya bisa dihapus di Setelan
+
 ## [1.6.2]
 
 ### Diperbaiki
