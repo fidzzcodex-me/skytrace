@@ -99,6 +99,10 @@ class TrafficRepository {
     await _api.invoke<bool>('bubbleRefresh');
   }
 
+  Future<void> clearLearnedBypass() async {
+    await _api.invoke<bool>('learnedBypassClear');
+  }
+
   Future<String?> exportRules() => _api.invoke<String>('rulesExport');
 
   Future<int> importRules(String json) async => (await _api.invoke<int>('rulesImport', {'json': json})) ?? 0;
