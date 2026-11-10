@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../providers/core_provider.dart';
 import '../providers/settings_provider.dart';
 import '../providers/update_provider.dart';
 import '../theme/animations.dart';
@@ -248,6 +249,76 @@ class SettingsScreen extends ConsumerWidget {
         const BubbleSettingsCard(),
         SectionHeader(title: t.t('adblock_title')),
         const AdblockSettingsCard(),
+        SectionHeader(title: t.t('tls_title')),
+        AnimatedCard(
+          index: 1,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.page, vertical: AppSpacing.tight),
+          child: Column(
+            children: [
+              _valueRow(
+                context,
+                label: t.t('bypass_apps_title'),
+                value: s.bypassApps.isEmpty ? t.t('bypass_apps_none') : '${s.bypassApps.length}',
+                icon: FontAwesomeIcons.lock,
+                onTap: () => Navigator.of(context).push(
+                  SlideFromRightRoute<void>(builder: (_) => const TargetAppsScreen(bypass: true)),
+                ),
+              ),
+              const Divider(),
+              _valueRow(
+                context,
+                label: t.t('learned_title'),
+                value: '${s.learnedBypassCount}',
+                icon: FontAwesomeIcons.eye,
+                onTap: () async {
+                  if (s.learnedBypassCount == 0) return;
+                  final ok = await showScaleDialog<bool>(
+                    context: context,
+                    builder: (ctx) {
+                      final pp = ctx.palette;
+                      return Center(
+                        child: Material(
+                          color: pp.surface,
+                          elevation: 8,
+                          borderRadius: BorderRadius.circular(AppRadius.dialog),
+                          child: Container(
+                            width: 320,
+                            padding: const EdgeInsets.all(AppSpacing.page + 4),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(t.t('learned_title'), style: AppText.heading(pp)),
+                                const SizedBox(height: 10),
+                                Text(t.t('learned_clear_confirm'), style: AppText.body(pp)),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(t.t('cancel'))),
+                                    TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(t.t('delete'))),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                  if (ok == true) {
+                    await ref.read(trafficRepositoryProvider).clearLearnedBypass();
+                    await controller.load();
+                  }
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8, top: 2),
+                child: Text(t.t('learned_hint'), style: AppText.label(p)),
+              ),
+            ],
+          ),
+        ),
         SectionHeader(title: t.t('set_proxy')),
         AnimatedCard(
           index: 1,
